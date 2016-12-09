@@ -4,6 +4,12 @@ library(XML)
 library(RCurl)
 library(DT)
 
+# http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/
+# Members
+json_file <- getURL("http://lda.data.parliament.uk/members.json?_pageSize=100", ssl.verifypeer = FALSE)
+json_data <- fromJSON(json_file)
+members_list <- json_data$result$items
+
 # Define UI for application that plots random distributions 
 shinyUI(fluidPage(
 
@@ -20,6 +26,8 @@ shinyUI(fluidPage(
     tags$i(textOutput('queryText')),
     checkboxInput("oralQuestionsBox", "Commons Oral Questions", TRUE),
     checkboxInput("writtenQuestionsBox", "Written Questions", TRUE),
+    selectInput("select", label = "Members", 
+                choices = members_list$fullName$'_value'),
     width = 3
   ),
   
