@@ -24,9 +24,11 @@ shinyServer(function(input, output) {
     results_list <- json_data$result$items
     results_list$AnswerDate <- results_list$AnswerDate$'_value'
     results_list$dateTabled <- results_list$dateTabled$'_value'
-    results_list$tablingMember <- results_list$tablingMember$'_about'
+    results_list$tablingMemberUrl <- results_list$tablingMember$'_about'
+    results_list$tablingMemberPrinted <- do.call("c", lapply(results_list$tablingMemberPrinted, "[[", 1))
+    results_list$AnsweringBody <- do.call("c", lapply(results_list$AnsweringBody, "[[", 1))
     results_list$type <- "Commons Oral Question"
-    results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMember, tablingMemberPrinted, type)
+    results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
     #print(colnames(results_list))
     results_list
   })
@@ -39,10 +41,12 @@ shinyServer(function(input, output) {
     results_list <- json_data$result$items
     results_list$AnswerDate <- results_list$AnswerDate$'_value'
     results_list$dateTabled <- results_list$dateTabled$'_value'
-    results_list$tablingMember <- results_list$tablingMember$'_about'
+    results_list$tablingMemberUrl <- results_list$tablingMember$'_about'
+    results_list$tablingMemberPrinted <- do.call("c", lapply(results_list$tablingMemberPrinted, "[[", 1))
+    results_list$AnsweringBody <- do.call("c", lapply(results_list$AnsweringBody, "[[", 1))
     results_list$title <- results_list$Location$prefLabel$'_value'
     results_list$type <- "Written Question"
-    results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMember, tablingMemberPrinted, type)
+    results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
     #print(colnames(results_list))
     results_list
   })
@@ -71,9 +75,9 @@ shinyServer(function(input, output) {
     barplot(bars()$n, names.arg = bars()$month)
   })
   
-  output$table_data <- renderTable({
-    select(data(), dateTabled, tablingMemberPrinted, questionText, AnsweringBody, type)
-  })
+  output$table_data <- DT::renderDataTable(
+    select(data(), dateTabled, tablingMemberPrinted, questionText, AnsweringBody, type), options = list(escape = FALSE)
+  )
   
   output$page_head <- renderUI({
     HTML(paste("<b>Dimensions:</b><br/><ul><li>"))

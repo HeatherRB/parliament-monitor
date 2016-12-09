@@ -28,7 +28,7 @@ shinyUI(fluidPage(
   mainPanel(
           #htmlOutput('page_head'),
           plotOutput('bar_chart'),
-          tableOutput('table_data')
+          DT::dataTableOutput('table_data')
   )
     
 ))
