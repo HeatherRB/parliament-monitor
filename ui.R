@@ -1,3 +1,8 @@
+library(shiny)
+library(jsonlite)
+library(XML)
+library(RCurl)
+library(DT)
 
 # Define UI for application that plots random distributions 
 shinyUI(fluidPage(
