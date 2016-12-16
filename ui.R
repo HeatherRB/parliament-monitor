@@ -10,8 +10,12 @@ json_file <- getURL("http://lda.data.parliament.uk/members.json?_pageSize=100", 
 json_data <- fromJSON(json_file)
 members_list <- json_data$result$items
 
+
+
 # Define UI for application that plots random distributions 
 shinyUI(fluidPage(
+  
+  includeCSS("style.css"),
 
   # Load D3.js
   tags$head(
@@ -19,13 +23,18 @@ shinyUI(fluidPage(
   ),
   
   # Application title
+  tags$img(src="https://www.nao.org.uk/wp-content/themes/nao2016/dist/images/nao_logo_400.png", style="float: right; margin: 15px"),
   titlePanel("NAO Parliament Monitor"),
   
+  # side bar
   sidebarPanel(
-    textInput("searchInput", "Search", value="e.g., free schools"),
+    tags$h3('Search', class="skipMargin"),
+    textInput("searchInput", label=NULL, value="e.g., free schools"),
     tags$i(textOutput('queryText')),
+    tags$h4('Select database(s)'),
     checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE),
     checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE),
+    tags$h4('Select member(s)'),
     selectInput("select", label = "Members", 
                 choices = members_list$fullName$'_value'),
     width = 3

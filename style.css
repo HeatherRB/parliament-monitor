@@ -1,0 +1,14 @@
+h3 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+h3.skipMargin {
+  margin-top: 0px;
+  margin-bottom: 10px;
+}
+
+h4 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
