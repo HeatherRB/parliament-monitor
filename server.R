@@ -5,7 +5,7 @@ library(RCurl)
 library(DT)
 library(plyr)
 library(dplyr)
-
+library(ggplot2)
 
 shinyServer(function(input, output) {
   
@@ -80,7 +80,12 @@ shinyServer(function(input, output) {
   })
   
   output$bar_chart <- renderPlot({
-    barplot(bars()$n, names.arg = bars()$month)
+    #barplot(bars()$n, names.arg = bars()$month)
+    #ggplot(bars()$n, aes=(bars()$month))
+    results_list <- data()
+    results_list$fdate <- as.Date(results_list$dateTabled)
+    #summarise(group_by(results_list, fdate), n=n()) %>%
+    ggplot(results_list, aes(fdate)) + geom_histogram(binwidth=7) #+ scale_x_date(date_labels = "%b %Y", limits = c(as.Date("2016-01-01"), Sys.Date()))
   })
   
   output$table_data <- DT::renderDataTable(
