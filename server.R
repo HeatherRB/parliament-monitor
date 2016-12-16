@@ -18,37 +18,45 @@ shinyServer(function(input, output) {
   
   # HoC Oral Questions
   writtenQuestions <- reactive({
-    urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=50", queryString(), sep="")
-    json_file <- getURL(urlString, ssl.verifypeer = FALSE)
-    json_data <- fromJSON(json_file)
-    results_list <- json_data$result$items
-    results_list$AnswerDate <- results_list$AnswerDate$'_value'
-    results_list$dateTabled <- results_list$dateTabled$'_value'
-    results_list$tablingMemberUrl <- results_list$tablingMember$'_about'
-    results_list$tablingMemberPrinted <- do.call("c", lapply(results_list$tablingMemberPrinted, "[[", 1))
-    results_list$AnsweringBody <- do.call("c", lapply(results_list$AnsweringBody, "[[", 1))
-    results_list$type <- "Commons Oral Question"
-    results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
-    #print(colnames(results_list))
-    results_list
+    if (input$commonsWrittenQuestionsCheckBox) {
+      urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=50", queryString(), sep="")
+      json_file <- getURL(urlString, ssl.verifypeer = FALSE)
+      json_data <- fromJSON(json_file)
+      results_list <- json_data$result$items
+      results_list$AnswerDate <- results_list$AnswerDate$'_value'
+      results_list$dateTabled <- results_list$dateTabled$'_value'
+      results_list$tablingMemberUrl <- results_list$tablingMember$'_about'
+      results_list$tablingMemberPrinted <- do.call("c", lapply(results_list$tablingMemberPrinted, "[[", 1))
+      results_list$AnsweringBody <- do.call("c", lapply(results_list$AnsweringBody, "[[", 1))
+      results_list$type <- "Commons Written Question"
+      results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
+      #print(colnames(results_list))
+      results_list
+    } else {
+      NULL
+    }
   })
   
   # HoC Written Questions
   oralQuestions <- reactive({
-    urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?_view=Commons+Oral+Questions&_pageSize=50&_search=", queryString(), sep="")
-    json_file <- getURL(urlString, ssl.verifypeer = FALSE)
-    json_data <- fromJSON(json_file)
-    results_list <- json_data$result$items
-    results_list$AnswerDate <- results_list$AnswerDate$'_value'
-    results_list$dateTabled <- results_list$dateTabled$'_value'
-    results_list$tablingMemberUrl <- results_list$tablingMember$'_about'
-    results_list$tablingMemberPrinted <- do.call("c", lapply(results_list$tablingMemberPrinted, "[[", 1))
-    results_list$AnsweringBody <- do.call("c", lapply(results_list$AnsweringBody, "[[", 1))
-    results_list$title <- results_list$Location$prefLabel$'_value'
-    results_list$type <- "Written Question"
-    results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
-    #print(colnames(results_list))
-    results_list
+    if (input$commonsOralQuestionsCheckBox) {
+      urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?_view=Commons+Oral+Questions&_pageSize=50&_search=", queryString(), sep="")
+      json_file <- getURL(urlString, ssl.verifypeer = FALSE)
+      json_data <- fromJSON(json_file)
+      results_list <- json_data$result$items
+      results_list$AnswerDate <- results_list$AnswerDate$'_value'
+      results_list$dateTabled <- results_list$dateTabled$'_value'
+      results_list$tablingMemberUrl <- results_list$tablingMember$'_about'
+      results_list$tablingMemberPrinted <- do.call("c", lapply(results_list$tablingMemberPrinted, "[[", 1))
+      results_list$AnsweringBody <- do.call("c", lapply(results_list$AnsweringBody, "[[", 1))
+      results_list$title <- results_list$Location$prefLabel$'_value'
+      results_list$type <- "Commons Oral Question"
+      results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
+      #print(colnames(results_list))
+      results_list
+    } else {
+      NULL
+    }
   })
   
   # load data

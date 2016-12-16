@@ -24,8 +24,8 @@ shinyUI(fluidPage(
   sidebarPanel(
     textInput("searchInput", "Search", value="e.g., free schools"),
     tags$i(textOutput('queryText')),
-    checkboxInput("oralQuestionsBox", "Commons Oral Questions", TRUE),
-    checkboxInput("writtenQuestionsBox", "Written Questions", TRUE),
+    checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE),
+    checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE),
     selectInput("select", label = "Members", 
                 choices = members_list$fullName$'_value'),
     width = 3
