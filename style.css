@@ -1,9 +1,15 @@
+h2.leftPadding {
+  padding-left: 15px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
 h3 {
   margin-top: 20px;
   margin-bottom: 10px;
 }
 
-h3.skipMargin {
+h3.noTopMargin {
   margin-top: 0px;
   margin-bottom: 10px;
 }

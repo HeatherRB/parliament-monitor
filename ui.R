@@ -24,18 +24,18 @@ shinyUI(fluidPage(
   
   # Application title
   tags$img(src="https://www.nao.org.uk/wp-content/themes/nao2016/dist/images/nao_logo_400.png", style="float: right; margin: 15px"),
-  titlePanel("NAO Parliament Monitor"),
+  tags$h2("NAO Parliament Monitor", class="leftPadding"),
   
   # side bar
   sidebarPanel(
-    tags$h3('Search', class="skipMargin"),
+    tags$h3('Search', class="noTopMargin"),
     textInput("searchInput", label=NULL, value="e.g., free schools"),
-    tags$i(textOutput('queryText')),
+    #tags$i(textOutput('queryText')),
     tags$h4('Select database(s)'),
     checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE),
     checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE),
     tags$h4('Select member(s)'),
-    selectInput("select", label = "Members", 
+    selectInput("select", label = NULL, 
                 choices = members_list$fullName$'_value'),
     width = 3
   ),

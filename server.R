@@ -84,7 +84,9 @@ shinyServer(function(input, output) {
   })
   
   output$table_data <- DT::renderDataTable(
-    select(data(), dateTabled, tablingMemberPrinted, questionText, AnsweringBody, type), options = list(escape = FALSE)
+    data() %>% 
+      select(dateTabled, tablingMemberPrinted, questionText, AnsweringBody, type) %>% 
+      datatable(colnames = c('Date' = 'dateTabled', 'Tabling member' = 'tablingMemberPrinted', 'Question text' = 'questionText', 'Answering body' = 'AnsweringBody'), escape=FALSE)
   )
   
   output$page_head <- renderUI({
