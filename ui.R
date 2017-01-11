@@ -35,6 +35,7 @@ shinyUI(fluidPage(
     checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE),
     checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE),
     tags$h4('Select member(s)'),
+    checkboxInput("PAC", "Public Accounts Committee members", FALSE),
     selectInput("select", label = NULL, 
                 choices = members_list$fullName$'_value'),
     width = 3

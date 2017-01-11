@@ -7,6 +7,8 @@ library(plyr)
 library(dplyr)
 library(ggplot2)
 
+mnisIdsPAC <- c(1524, 1451)
+
 shinyServer(function(input, output) {
   
   # search criteria
@@ -18,8 +20,16 @@ shinyServer(function(input, output) {
   
   # HoC Oral Questions
   writtenQuestions <- reactive({
-    if (input$commonsWrittenQuestionsCheckBox) {
+    if (input$PAC) {
+      urlString <- "http://lda.data.parliament.uk/commonswrittenquestions.json?mnisId=1451&_view=Written+Questions&_pageSize=50"
+    } else if (input$commonsWrittenQuestionsCheckBox) {
       urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=50", queryString(), sep="")
+    } else {
+      NULL
+    }
+    if (is.null(urlString)) {
+      NULL
+    } else {
       json_file <- getURL(urlString, ssl.verifypeer = FALSE)
       json_data <- fromJSON(json_file)
       results_list <- json_data$result$items
@@ -32,15 +42,24 @@ shinyServer(function(input, output) {
       results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
       #print(colnames(results_list))
       results_list
-    } else {
-      NULL
     }
   })
   
   # HoC Written Questions
   oralQuestions <- reactive({
-    if (input$commonsOralQuestionsCheckBox) {
+    if (input$PAC) {
+      results_list <- NULL
+      for (mnisId in mnisIdsPAC) {
+        urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?mnisId=", mnisId, "&_view=Commons+Oral+Questions&_pageSize=50", sep="")
+      }
+    } else if (input$commonsOralQuestionsCheckBox) {
       urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?_view=Commons+Oral+Questions&_pageSize=50&_search=", queryString(), sep="")
+    } else {
+      NULL
+    }
+    if (is.null(urlString)) {
+      NULL
+    } else {
       json_file <- getURL(urlString, ssl.verifypeer = FALSE)
       json_data <- fromJSON(json_file)
       results_list <- json_data$result$items
@@ -54,8 +73,6 @@ shinyServer(function(input, output) {
       results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
       #print(colnames(results_list))
       results_list
-    } else {
-      NULL
     }
   })
   
