@@ -30,7 +30,7 @@ shinyUI(fluidPage(
   sidebarPanel(
     tags$h3('Search', class="noTopMargin"),
     textInput("searchInput", label=NULL, value="e.g., National Audit Office"),
-    tags$i(textOutput('queryText')),
+    #tags$i(textOutput('queryText')),
     tags$h4('Select database(s)'),
     checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE),
     checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE),
