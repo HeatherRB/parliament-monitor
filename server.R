@@ -12,7 +12,7 @@ shinyServer(function(input, output) {
   # search criteria
   queryString <- reactive({
     string <- sub("e.g., ", "", input$searchInput)
-    string <- gsub(" ", "+", string)
+    string <- gsub(" ", "+AND+", string)
     paste("&_search=", string, sep="")
   })
   
