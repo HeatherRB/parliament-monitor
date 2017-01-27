@@ -27,18 +27,30 @@ shinyUI(fluidPage(
   tags$h2("NAO Parliament Monitor", class="leftPadding"),
   
   # side bar
-  sidebarPanel(
-    tags$h3('Search', class="noTopMargin"),
-    textInput("searchInput", label=NULL, value="e.g., National Audit Office"),
-    #tags$i(textOutput('queryText')),
-    tags$h4('Select database(s)'),
-    checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE),
-    checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE),
-    tags$h4('Select member(s)'),
-    checkboxInput("PAC", "Public Accounts Committee members", FALSE),
-    selectInput("select", label = NULL, 
-                choices = members_list$fullName$'_value'),
-    width = 3
+  column(3, 
+    tabsetPanel(
+        tabPanel("Text search", 
+            inputPanel(
+               tags$h3('Search'),
+               textInput("searchInput", label=NULL, value="e.g., National Audit Office")
+            )
+        ),
+        tabPanel("PAC members",
+            inputPanel(
+              tags$h3('Select PAC members'),
+              checkboxInput("PAC", "All PAC members", FALSE)
+            )
+        )
+    ),
+    
+    inputPanel(
+      #tags$i(textOutput('queryText')),
+      tags$h4('Select database(s)'),
+      checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE),
+      checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE)
+      #tags$h4('Select member(s)'),
+      #selectInput("select", label = NULL, choices = members_list$fullName$'_value')
+    ) 
   ),
   
   
