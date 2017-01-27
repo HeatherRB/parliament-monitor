@@ -7,8 +7,35 @@ library(plyr)
 library(dplyr)
 library(ggplot2)
 
-mnisIdsPAC <- c(1524, 1451)
+mnisIdsPAC <- c(1524, 1451, 4388, 3971, 4040, 389, 4451, 3929, 4134, 4136, 4249, 4046, 1454, 4444, 4531)
+# source: http://www.parliament.uk/business/committees/committees-a-z/commons-select/public-accounts-committee/membership/
 
+cleanWrittenQs <- function(json_data){
+  list <- json_data$result$items
+  list$AnswerDate <- list$AnswerDate$'_value'
+  list$dateTabled <- list$dateTabled$'_value'
+  list$tablingMemberUrl <- list$tablingMember$'_about'
+  list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, "[[", 1))
+  list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, "[[", 1))
+  list$type <- "Commons Written Question"
+  list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
+  return(list)
+}
+
+cleanOralQs <- function(json_data){
+  list <- json_data$result$items
+  list$AnswerDate <- list$AnswerDate$'_value'
+  list$dateTabled <- list$dateTabled$'_value'
+  list$tablingMemberUrl <- list$tablingMember$'_about'
+  list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, "[[", 1))
+  list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, "[[", 1))
+  list$title <- list$Location$prefLabel$'_value'
+  list$type <- "Commons Oral Question"
+  list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
+  return(list)
+}
+
+  
 shinyServer(function(input, output) {
   
   # search criteria
@@ -32,14 +59,7 @@ shinyServer(function(input, output) {
     } else {
       json_file <- getURL(urlString, ssl.verifypeer = FALSE)
       json_data <- fromJSON(json_file)
-      results_list <- json_data$result$items
-      results_list$AnswerDate <- results_list$AnswerDate$'_value'
-      results_list$dateTabled <- results_list$dateTabled$'_value'
-      results_list$tablingMemberUrl <- results_list$tablingMember$'_about'
-      results_list$tablingMemberPrinted <- do.call("c", lapply(results_list$tablingMemberPrinted, "[[", 1))
-      results_list$AnsweringBody <- do.call("c", lapply(results_list$AnsweringBody, "[[", 1))
-      results_list$type <- "Commons Written Question"
-      results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
+      results_list <- cleanWrittenQs(json_data)
       #print(colnames(results_list))
       results_list
     }
@@ -51,26 +71,28 @@ shinyServer(function(input, output) {
       results_list <- NULL
       for (mnisId in mnisIdsPAC) {
         urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?mnisId=", mnisId, "&_view=Commons+Oral+Questions&_pageSize=50", sep="")
+        json_file <- getURL(urlString, ssl.verifypeer = FALSE)
+        json_data <- fromJSON(json_file)
+        if (is.null(results_list)) {
+          results_list <- cleanOralQs(json_data)
+        } else {
+          results_list <- rbind(results_list, cleanOralQs(json_data))
+        }
       }
+      #print(colnames(results_list))
+      results_list <- results_list[rev(order(as.Date(results_list$dateTabled))),]
     } else if (input$commonsOralQuestionsCheckBox) {
       urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?_view=Commons+Oral+Questions&_pageSize=50&_search=", queryString(), sep="")
+      json_file <- getURL(urlString, ssl.verifypeer = FALSE)
+      json_data <- fromJSON(json_file)
+      results_list <- cleanOralQs(json_data)
     } else {
       NULL
     }
     if (is.null(urlString)) {
       NULL
     } else {
-      json_file <- getURL(urlString, ssl.verifypeer = FALSE)
-      json_data <- fromJSON(json_file)
-      results_list <- json_data$result$items
-      results_list$AnswerDate <- results_list$AnswerDate$'_value'
-      results_list$dateTabled <- results_list$dateTabled$'_value'
-      results_list$tablingMemberUrl <- results_list$tablingMember$'_about'
-      results_list$tablingMemberPrinted <- do.call("c", lapply(results_list$tablingMemberPrinted, "[[", 1))
-      results_list$AnsweringBody <- do.call("c", lapply(results_list$AnsweringBody, "[[", 1))
-      results_list$title <- results_list$Location$prefLabel$'_value'
-      results_list$type <- "Commons Oral Question"
-      results_list <- select(results_list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
+
       #print(colnames(results_list))
       results_list
     }
