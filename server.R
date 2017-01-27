@@ -36,7 +36,7 @@ cleanOralQs <- function(json_data){
 }
 
   
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
   
   # search criteria
   queryString <- reactive({
@@ -52,7 +52,7 @@ shinyServer(function(input, output) {
     } else if (input$commonsWrittenQuestionsCheckBox) {
       urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=50", queryString(), sep="")
     } else {
-      NULL
+      urlString <- NULL
     }
     if (is.null(urlString)) {
       NULL
@@ -105,6 +105,17 @@ shinyServer(function(input, output) {
     rbind(oralQuestions(), writtenQuestions())
   })
   
+  tab <- reactive({
+    input$tabs
+  })
+  
+  observe({
+    # Uncheck PAC box if user clicks back to search tab
+    if (tab() == "Text search") {
+      updateCheckboxInput(session, "PAC", value = FALSE)
+    }
+  })
+  
   # bars
   bars <- reactive({
     results_list <- data()
@@ -139,6 +150,10 @@ shinyServer(function(input, output) {
   
   output$queryText <- renderText({ 
     queryString()
+  })
+  
+  output$tabText <- renderText({ 
+    tab()
   })
   
   

@@ -40,7 +40,8 @@ shinyUI(fluidPage(
               tags$h3('Select PAC members'),
               checkboxInput("PAC", "All PAC members", FALSE)
             )
-        )
+        ),
+        id = "tabs"
     ),
     
     inputPanel(
