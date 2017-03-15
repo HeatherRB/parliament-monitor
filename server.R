@@ -109,12 +109,12 @@ shinyServer(function(input, output, session) {
     input$tabs
   })
   
-  observe({
+  #observe({
     # Uncheck PAC box if user clicks back to search tab
-    if (tab() == "Text search") {
-      updateCheckboxInput(session, "PAC", value = FALSE)
-    }
-  })
+    #if (tab() == "Text search") {
+    #  updateCheckboxInput(session, "PAC", value = FALSE)
+    #}
+  #})
   
   # bars
   bars <- reactive({
