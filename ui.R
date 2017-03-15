@@ -56,16 +56,16 @@ shinyUI(
                  #)
                 
                 #htmlOutput('page_head'),
-                plotOutput('bar_chart'),
-                DT::dataTableOutput('table_data')
+                plotOutput('text_search_bars'),
+                DT::dataTableOutput('text_search_table')
         ),
         tabItem(tabName="pacMembers",
                  #inputPanel(
                    tags$h3('Select PAC members'),
-                   checkboxInput("PAC", "All PAC members", FALSE)
+                   checkboxInput("PAC", "All PAC members", FALSE),
                  #)
-                #plotOutput('bar_chart'),
-                #DT::dataTableOutput('table_data')
+                plotOutput('pac_members_bars'),
+                DT::dataTableOutput('pac_members_table')
         )#,
         #id = "tabs"
       )
