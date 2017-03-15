@@ -26,6 +26,7 @@ shinyUI(
     dashboardHeader(title="Parliament Monitor"),
     
     dashboardSidebar(
+      h4(' Select function:'),
       sidebarMenu(
         menuItem("Text search", tabName="textSearch"),
         menuItem("PAC members", tabName="pacMembers")
@@ -33,14 +34,15 @@ shinyUI(
       
       #flowLayout(
       #inputPanel(
-        #tags$i(textOutput('queryText')),
-        h4('Select database(s)'),
+        h4(' Select database(s):'),
         checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE),
-        checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE)
-        #tags$h4('Select member(s)'),
-        #selectInput("select", label = NULL, choices = members_list$fullName$'_value')
+        checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE),
       #)
       #)
+      
+      h4('Options:'),
+      selectInput("text_search_results", "Number of search results per database:",c("10" = 10, "25" = 25, "50" = 50, "100" = 100), selected=50),
+      selectInput("pac_member_results", "Number of results per member:",c("10" = 10, "25" = 25, "50" = 50, "100" = 100), selected=10)
     ),
     
     dashboardBody(

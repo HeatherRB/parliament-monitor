@@ -79,12 +79,13 @@ shinyServer(function(input, output, session) {
   # load data for text search
   text_search_data <- reactive({
     results_list <- NULL
+    pageSize <- input$text_search_results
     if (input$commonsWrittenQuestionsCheckBox) {
-      urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=50", queryString(), sep="")
+      urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=", pageSize, "&_search=", queryString(), sep="")
       results_list <- getJsonData(urlString, results_list, "written")
     }
     if (input$commonsOralQuestionsCheckBox) {
-      urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?_view=Commons+Oral+Questions&_pageSize=50&_search=", queryString(), sep="")
+      urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?_view=Commons+Oral+Questions&_pageSize=", pageSize, "&_search=", queryString(), sep="")
       results_list <- getJsonData(urlString, results_list, "oral")
     }
     results_list
@@ -95,13 +96,14 @@ shinyServer(function(input, output, session) {
     results_list <- NULL
     if (input$commonsWrittenQuestionsCheckBox) {
       for (mnisId in mnisIdsPAC) {
-        urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?mnisId=", mnisId, "&_view=Written+Questions&_pageSize=10", sep="")
-        results_list <- getJsonData(urlString, results_list, "oral")
+        pageSize <- input$pac_member_results
+        urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?mnisId=", mnisId, "&_view=Written+Questions&_pageSize=", pageSize, sep="")
+        results_list <- getJsonData(urlString, results_list, "written")
       }
     }
     if (input$commonsOralQuestionsCheckBox) {
       for (mnisId in mnisIdsPAC) {
-        urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?mnisId=", mnisId, "&_view=Commons+Oral+Questions&_pageSize=10", sep="")
+        urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?mnisId=", mnisId, "&_view=Commons+Oral+Questions&_pageSize=", pageSize, sep="")
         results_list <- getJsonData(urlString, results_list, "oral")
       }
     }
