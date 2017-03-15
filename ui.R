@@ -13,7 +13,7 @@ library(DT)
 
 
 shinyUI(
-  dashboardPage(
+  dashboardPage(skin = "blue",
     
     #includeCSS("style.css"),
     
@@ -23,26 +23,23 @@ shinyUI(
     #),
     
     # Application title
-    dashboardHeader(title="Parliament Monitor"),
+    dashboardHeader(title="NAO Parliament Monitor", titleWidth = 275),
     
     dashboardSidebar(
+      width = 275,
       h4(' Select function:'),
       sidebarMenu(
-        menuItem("Text search", tabName="textSearch"),
-        menuItem("PAC members", tabName="pacMembers")
-      ),
-      
-      #flowLayout(
-      #inputPanel(
-        h4(' Select database(s):'),
-        checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE),
-        checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE),
-      #)
-      #)
-      
-      h4('Options:'),
-      selectInput("text_search_results", "Number of search results per database:",c("10" = 10, "25" = 25, "50" = 50, "100" = 100), selected=50),
-      selectInput("pac_member_results", "Number of results per member:",c("10" = 10, "25" = 25, "50" = 50, "100" = 100), selected=10)
+        menuItem("Text search", tabName="textSearch", icon = icon("search")),
+        menuItem("PAC members", tabName="pacMembers", icon = icon("users")),
+        menuItem("Select databases", tabName="databases", icon = icon("database"), 
+                 menuSubItem(icon = NULL, checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE)),
+                 menuSubItem(icon = NULL, checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE))
+                 ),
+        menuItem("Options", tabName="options", icon = icon("cog"), 
+                 menuSubItem(icon = NULL, selectInput("text_search_results", "Number of search results per database:",c("10" = 10, "25" = 25, "50" = 50, "100" = 100), selected=50)),
+                 menuSubItem(icon = NULL, selectInput("pac_member_results", "Number of results per PAC member:",c("10" = 10, "25" = 25, "50" = 50, "100" = 100), selected=10))
+        )
+      )
     ),
     
     dashboardBody(
