@@ -49,21 +49,19 @@ shinyUI(
       
       tabItems(
         tabItem(tabName="textSearch", 
-                 #inputPanel(
-                   tags$h3('Search'),
-                   textInput("searchInput", label=NULL, value="e.g., National Audit Office"),
-                 #)
-                
-                #htmlOutput('page_head'),
-                plotOutput('text_search_bars'),
+                tags$h3('Search'),
+                textInput("searchInput", label=NULL, value="e.g., National Audit Office"),
+                fluidRow(
+                         box(width=12, plotOutput('text_search_bars'))
+                         ),
                 DT::dataTableOutput('text_search_table')
         ),
         tabItem(tabName="pacMembers",
-                 #inputPanel(
-                   tags$h3('Select PAC members'),
-                   checkboxInput("PAC", "All PAC members", FALSE),
-                 #)
-                plotOutput('pac_members_bars'),
+                tags$h3('Select PAC members'),
+                checkboxInput("PAC", "All PAC members", FALSE),
+                fluidRow(
+                  box(width=12, plotOutput('pac_members_bars'))
+                ),
                 DT::dataTableOutput('pac_members_table')
         )#,
         #id = "tabs"
