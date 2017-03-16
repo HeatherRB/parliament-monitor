@@ -2,7 +2,8 @@ library(shiny)
 library(jsonlite)
 library(XML)
 library(RCurl)
-library(DT)
+#library(httr) # for GET command https://cran.r-project.org/web/packages/httr/httr.pdf
+library(DT) # for data tables http://rstudio.github.io/DT/
 library(plyr)
 library(dplyr)
 library(ggplot2)
@@ -11,7 +12,10 @@ mnisIdsPAC <- c(1524, 1451, 4388, 3971, 4040, 389, 4451, 3929, 4134, 4136, 4249,
 # source: http://www.parliament.uk/business/committees/committees-a-z/commons-select/public-accounts-committee/membership/
 
 # list to store info on individual MPs
-MPs <- list()
+MPs_XML <- getURL("http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons/", ssl.verifypeer = FALSE)
+xmlfile <- xmlTreeParse(MPs_XML)
+MPs_data <- xmlSApply(xmlRoot(xmlfile), function(x) c(xmlGetAttr(x, "Member_Id"), xmlSApply(x, xmlValue)))
+MPs_df <- data.frame(t(MPs_data),row.names=NULL)
 
 # function to check for null values and replace with 'NA'
 elseNA <- function(x){
@@ -179,9 +183,11 @@ shinyServer(function(input, output, session) {
     #ggplot(results_list, aes(fdate)) + geom_histogram(binwidth=7) #+ scale_x_date(date_labels = "%b %Y", limits = c(as.Date("2016-01-01"), Sys.Date()))
   #})
 
+  # put MPs data into a DT data table
+  # http://rstudio.github.io/DT/
   output$MPs <- DT::renderDataTable(
-    MPs_data() %>%
-      datatable(escape=FALSE)
+    #MPs_data()$linked_Name = paste("<a href=", constituencyURL, ">", name, "</a>")) %>%
+    datatable(MPs_df, escape=FALSE, filter = 'top')
   )
     
   output$text_search_table <- DT::renderDataTable(
