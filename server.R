@@ -7,15 +7,24 @@ library(DT) # for data tables http://rstudio.github.io/DT/
 library(plyr)
 library(dplyr)
 library(ggplot2)
+library(leaflet) # for plotting maps https://rstudio.github.io/leaflet/
+library(rgdal) # for reading shape files (readOGR) https://www.r-bloggers.com/things-i-forget-reading-a-shapefile-in-r-with-readogr/
 
 mnisIdsPAC <- c(1524, 1451, 4388, 3971, 4040, 389, 4451, 3929, 4134, 4136, 4249, 4046, 1454, 4444, 4531)
 # source: http://www.parliament.uk/business/committees/committees-a-z/commons-select/public-accounts-committee/membership/
 
 # list to store info on individual MPs
+# http://data.parliament.uk/MembersDataPlatform/memberquery.aspx
 MPs_XML <- getURL("http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons/", ssl.verifypeer = FALSE)
 xmlfile <- xmlTreeParse(MPs_XML)
 MPs_data <- xmlSApply(xmlRoot(xmlfile), function(x) c(xmlGetAttr(x, "Member_Id"), xmlSApply(x, xmlValue)))
 MPs_df <- data.frame(t(MPs_data),row.names=NULL)
+#sapply(MPs_df, class)
+MPs_df$Party <- do.call("c", lapply(MPs_df$Party, "[[", 1))
+MPs_df$Gender <- do.call("c", lapply(MPs_df$Gender, "[[", 1))
+MPs_df$MemberFrom <- do.call("c", lapply(MPs_df$MemberFrom, "[[", 1))
+MPs_df <- mutate(MPs_df, mnisId=as.character(V1))
+MPs_df <- select(MPs_df, -V1)
 
 # function to check for null values and replace with 'NA'
 elseNA <- function(x){
@@ -120,6 +129,7 @@ shinyServer(function(input, output, session) {
     results_list <- NULL
     pageSize <- input$text_search_results
     if (input$commonsWrittenQuestionsCheckBox) {
+      # urlString <- "http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=25" 
       urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=", pageSize, "&_search=", queryString(), sep="")
       results_list <- getJsonData(urlString, results_list, "written")
     }
@@ -127,6 +137,9 @@ shinyServer(function(input, output, session) {
       urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?_view=Commons+Oral+Questions&_pageSize=", pageSize, "&_search=", queryString(), sep="")
       results_list <- getJsonData(urlString, results_list, "oral")
     }
+    
+    # incorporate data on MPs
+    results_list <- merge(results_list, select(MPs_df, mnisId, MemberFrom, Party))
     
     results_list <- results_list[rev(order(as.Date(results_list$dateTabled))),]
     results_list
@@ -187,13 +200,14 @@ shinyServer(function(input, output, session) {
   # http://rstudio.github.io/DT/
   output$MPs <- DT::renderDataTable(
     #MPs_data()$linked_Name = paste("<a href=", constituencyURL, ">", name, "</a>")) %>%
-    datatable(MPs_df, escape=FALSE, filter = 'top')
+    datatable(MPs_df, escape=TRUE, filter = 'top')
   )
     
   output$text_search_table <- DT::renderDataTable(
     text_search_data() %>% 
-      select(dateTabled, tablingMemberPrinted, questionText, AnsweringBody, type) %>% 
-      datatable(colnames = c('Date' = 'dateTabled', 'Tabling member' = 'tablingMemberPrinted', 'Question text' = 'questionText', 'Answering body' = 'AnsweringBody'), escape=FALSE)
+      select(-mnisId, -About, -tablingMemberUrl) %>% 
+      datatable()
+      #datatable(colnames = c('Date' = 'dateTabled', 'Tabling member' = 'tablingMemberPrinted', 'Question text' = 'questionText', 'Answering body' = 'AnsweringBody'), escape=FALSE)
   )
   
   output$text_search_bars <- renderPlot({
@@ -212,6 +226,10 @@ shinyServer(function(input, output, session) {
     results_list <- pac_members_data()
     results_list$fdate <- as.Date(results_list$dateTabled)
     ggplot(results_list, aes(fdate)) + geom_histogram(binwidth=7)
+  })
+  
+  output$party_bars <- renderPlot({
+    ggplot(data=text_search_data(), aes(factor(Party))) + geom_bar() + coord_flip()
   })
   
   output$page_head <- renderUI({

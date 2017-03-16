@@ -1,5 +1,5 @@
 library(shiny)
-library(shinydashboard)
+library(shinydashboard) # https://rstudio.github.io/shinydashboard/
 library(jsonlite)
 library(XML)
 library(RCurl)
@@ -30,7 +30,7 @@ shinyUI(
       h4(' Select function:'),
       sidebarMenu(
         menuItem("Text search", tabName="textSearch", icon = icon("search")),
-        menuItem("PAC members", tabName="pacMembers", icon = icon("users")),
+        menuItem("PAC", tabName="pacMembers", icon = icon("institution")),
         menuItem("MPs", tabName="MPs", icon = icon("users")),
         menuItem("Select databases", tabName="databases", icon = icon("database"), 
                  menuSubItem(icon = NULL, checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE)),
@@ -53,7 +53,8 @@ shinyUI(
                 tags$h3('Search'),
                 textInput("searchInput", label=NULL, value="e.g., National Audit Office"),
                 fluidRow(
-                         box(width=12, plotOutput('text_search_bars'))
+                         box(width=8, plotOutput('text_search_bars')),
+                         box(width=4, plotOutput('party_bars'))
                          ),
                 DT::dataTableOutput('text_search_table')
         ),
