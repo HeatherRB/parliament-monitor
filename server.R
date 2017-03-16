@@ -10,6 +10,39 @@ library(ggplot2)
 mnisIdsPAC <- c(1524, 1451, 4388, 3971, 4040, 389, 4451, 3929, 4134, 4136, 4249, 4046, 1454, 4444, 4531)
 # source: http://www.parliament.uk/business/committees/committees-a-z/commons-select/public-accounts-committee/membership/
 
+# list to store info on individual MPs
+MPs <- list()
+
+# function to check for null values and replace with 'NA'
+elseNA <- function(x){
+  if (is.null(x)) {
+    return('NA')
+  } else {
+    return(x)
+  }
+}
+
+# Get info on individual MPs
+getMPInfo <- function(mnisId){
+  urlString <- paste("http://lda.data.parliament.uk/members/", mnisId, ".json", sep="")
+  json_file <- getURL(urlString, ssl.verifypeer = FALSE)
+  json_data <- fromJSON(json_file)
+  info <- json_data$result$primaryTopic
+  MPInfo <- vector(length = 8)
+  #MPInfo.names <- c("name", "Id", "constituency", "constituencyURL", "gender", "website", "party", "twitter")
+  MPInfo <- c(
+              name = elseNA(info$fullName$'_value'[1]),
+              Id = elseNA(mnisId),
+              constituency = elseNA(info$constituency$label$'_value'[1]),
+              constituencyURL = elseNA(info$constituency$'_about'[1]),
+              gender = elseNA(info$gender$'_value'[1]),
+              website = elseNA(info$homePage[1]),
+              party = elseNA(info$party$'_value'[1]),
+              twitter = elseNA(info$twitter$'_value'[1])
+              )
+  return(MPInfo)
+}
+
 # Clean and format json data for written questions
 cleanWrittenQs <- function(json_data){
   list <- json_data$result$items
@@ -19,7 +52,8 @@ cleanWrittenQs <- function(json_data){
   list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, "[[", 1))
   list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, "[[", 1))
   list$type <- "Commons Written Question"
-  list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
+  list$mnisId <- do.call("c", lapply(strsplit(list$tablingMemberUrl, "/"), "[[", 5))
+  list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, mnisId, type)
   return(list)
 }
 
@@ -33,7 +67,8 @@ cleanOralQs <- function(json_data){
   list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, "[[", 1))
   list$title <- list$Location$prefLabel$'_value'
   list$type <- "Commons Oral Question"
-  list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, type)
+  list$mnisId <- do.call("c", lapply(strsplit(list$tablingMemberUrl, "/"), "[[", 5))
+  list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, mnisId, type)
   return(list)
 }
 
@@ -88,7 +123,18 @@ shinyServer(function(input, output, session) {
       urlString <- paste("http://lda.data.parliament.uk/commonsoralquestions.json?_view=Commons+Oral+Questions&_pageSize=", pageSize, "&_search=", queryString(), sep="")
       results_list <- getJsonData(urlString, results_list, "oral")
     }
+    
+    results_list <- results_list[rev(order(as.Date(results_list$dateTabled))),]
     results_list
+  })
+  
+  MPs_data <- reactive({
+    v <- unique(text_search_data()$mnisId)
+    MPs.names <- v
+    for (Id in v) {
+      MPs[[Id]] <- getMPInfo(Id)
+    }
+    t(as.data.frame(MPs))
   })
   
   # load data for PAC members
@@ -132,7 +178,12 @@ shinyServer(function(input, output, session) {
     #summarise(group_by(results_list, fdate), n=n()) %>%
     #ggplot(results_list, aes(fdate)) + geom_histogram(binwidth=7) #+ scale_x_date(date_labels = "%b %Y", limits = c(as.Date("2016-01-01"), Sys.Date()))
   #})
-  
+
+  output$MPs <- DT::renderDataTable(
+    MPs_data() %>%
+      datatable(escape=FALSE)
+  )
+    
   output$text_search_table <- DT::renderDataTable(
     text_search_data() %>% 
       select(dateTabled, tablingMemberPrinted, questionText, AnsweringBody, type) %>% 
