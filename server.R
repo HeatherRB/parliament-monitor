@@ -17,13 +17,19 @@ mnisIdsPAC <- c(1524, 1451, 4388, 3971, 4040, 389, 4451, 3929, 4134, 4136, 4249,
 # set up data on party colours
 Party <- c("Labour", "Labour (Co-op)", "Conservative", 
              "Scottish National Party", "Plaid Cymru", "Green Party",
-             "Sinn Fein", "Liberal Democrat", "Democratic Unionist Party",
-             "UK Independence Party", "Ulster Unionist Party")
-colour <- c("red", "red", "blue",
+           "Speaker", "Liberal Democrat", "UK Independence Party", "Independent",
+           "Democratic Unionist Party", "Ulster Unionist Party", 
+           "Social Democratic & Labour Party", "Sinn Fein")
+
+colour <- c("red", "red", "royalblue",
              "yellow", "forestgreen", "green",
-             "darkgreen", "orange", "red4",
-             "purple", "blue4")
+             "gray", "orange", "purple", "gray",
+             "darkred", "darkblue",
+            "forestgreen", "darkgreen")
 partyColours <- data.frame(Party, colour)
+partyColoursGB <- partyColours[1:10,]
+partyColours$Party <- factor(partyColours$Party)
+partyColours$colour <- factor(partyColours$colour)
 
 # list to store info on individual MPs
 # http://data.parliament.uk/MembersDataPlatform/memberquery.aspx
@@ -225,6 +231,7 @@ shinyServer(function(input, output, session) {
   
   output$MPs_map <- renderLeaflet({
     # open and transform constituency boundary file
+    # 
     boundaries <- readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Super_Generalised_Clipped_Boundaries_in_Great_Britain")
     boundaries2 <- spTransform(boundaries, CRS("+init=epsg:4326"))
     
@@ -236,12 +243,12 @@ shinyServer(function(input, output, session) {
     # Q: How to set deafult zoom?
     # labels script https://rpubs.com/bhaskarvk/leaflet-labelssample.int(5L, nrow(countries), TRUE)
     leaflet(boundaries2) %>%
-      addPolygons(stroke=TRUE, weight=0.3, fillOpacity = 0.7,
+      addPolygons(stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
                   label=mapply(function(x, y, z) {
                     htmltools::HTML(sprintf("%s <br>Member: %s, %s", htmlEscape(x), htmlEscape(y), htmlEscape(z)))}, 
                     boundaries2$pcon15nm, boundaries2$DisplayAs, boundaries2$Party, SIMPLIFY = F),
-                  color = ~colour) #%>%
-      #addLegend(pal = partyColours$colour, values = partyColours$Party, opacity = 1)
+                  fillColor = ~colour) %>%
+      addLegend(colors = partyColoursGB$colour, labels = partyColoursGB$Party, opacity = 0.7)
   })
     
   output$text_search_table <- DT::renderDataTable(
