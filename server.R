@@ -9,9 +9,21 @@ library(dplyr)
 library(ggplot2)
 library(leaflet) # for plotting maps https://rstudio.github.io/leaflet/
 library(rgdal) # for reading shape files (readOGR) https://www.r-bloggers.com/things-i-forget-reading-a-shapefile-in-r-with-readogr/
+library(htmltools)
 
 mnisIdsPAC <- c(1524, 1451, 4388, 3971, 4040, 389, 4451, 3929, 4134, 4136, 4249, 4046, 1454, 4444, 4531)
 # source: http://www.parliament.uk/business/committees/committees-a-z/commons-select/public-accounts-committee/membership/
+
+# set up data on party colours
+Party <- c("Labour", "Labour (Co-op)", "Conservative", 
+             "Scottish National Party", "Plaid Cymru", "Green Party",
+             "Sinn Fein", "Liberal Democrat", "Democratic Unionist Party",
+             "UK Independence Party", "Ulster Unionist Party")
+colour <- c("red", "red", "blue",
+             "yellow", "forestgreen", "green",
+             "darkgreen", "orange", "red4",
+             "purple", "blue4")
+partyColours <- data.frame(Party, colour)
 
 # list to store info on individual MPs
 # http://data.parliament.uk/MembersDataPlatform/memberquery.aspx
@@ -212,13 +224,24 @@ shinyServer(function(input, output, session) {
   )
   
   output$MPs_map <- renderLeaflet({
-    # open and transform boundary file
-    boundaries <- readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Ultra_Generalised_Clipped_Boundaries_in_Great_Britain")
+    # open and transform constituency boundary file
+    boundaries <- readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Super_Generalised_Clipped_Boundaries_in_Great_Britain")
     boundaries2 <- spTransform(boundaries, CRS("+init=epsg:4326"))
     
+    # merge in data on MPs
+    # Q: Are there gaps after merging on name?
+    boundaries2 <- merge(boundaries2, select(MPs_df, mnisId, DisplayAs, MemberFrom, Party), by.x="pcon15nm", by.y="MemberFrom")
+    boundaries2 <- merge(boundaries2, partyColours)
+    
     # Q: How to set deafult zoom?
-    leaflet() %>%
-      addPolygons(data=boundaries2, stroke=TRUE, weight=0.2)
+    # labels script https://rpubs.com/bhaskarvk/leaflet-labelssample.int(5L, nrow(countries), TRUE)
+    leaflet(boundaries2) %>%
+      addPolygons(stroke=TRUE, weight=0.3, fillOpacity = 0.7,
+                  label=mapply(function(x, y, z) {
+                    htmltools::HTML(sprintf("%s <br>Member: %s, %s", htmlEscape(x), htmlEscape(y), htmlEscape(z)))}, 
+                    boundaries2$pcon15nm, boundaries2$DisplayAs, boundaries2$Party, SIMPLIFY = F),
+                  color = ~colour) #%>%
+      #addLegend(pal = partyColours$colour, values = partyColours$Party, opacity = 1)
   })
     
   output$text_search_table <- DT::renderDataTable(
