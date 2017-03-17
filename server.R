@@ -206,9 +206,20 @@ shinyServer(function(input, output, session) {
     select(MPs_df, DisplayAs, Gender, Party, MemberFrom) %>%
     datatable(escape=TRUE, 
               filter = 'top',
+              colnames = c('Name' = 'DisplayAs', 'Constituency' = 'MemberFrom'),
               caption = htmltools::tags$caption("This table lists all current House of Commons MPs, as listed on ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), "."),
               options = list(pageLength = 50))
   )
+  
+  output$MPs_map <- renderLeaflet({
+    # open and transform boundary file
+    boundaries <- readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Ultra_Generalised_Clipped_Boundaries_in_Great_Britain")
+    boundaries2 <- spTransform(boundaries, CRS("+init=epsg:4326"))
+    
+    # Q: How to set deafult zoom?
+    leaflet() %>%
+      addPolygons(data=boundaries2, stroke=TRUE, weight=0.2)
+  })
     
   output$text_search_table <- DT::renderDataTable(
     text_search_data() %>% 

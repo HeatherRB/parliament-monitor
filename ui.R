@@ -31,7 +31,10 @@ shinyUI(
       sidebarMenu(
         menuItem("Text search", tabName="textSearch", icon = icon("search")),
         menuItem("PAC", tabName="pacMembers", icon = icon("institution")),
-        menuItem("Commons MPs", tabName="MPs", icon = icon("users")),
+        menuItem("House of Commons MPs", tabName="MPs", icon = icon("users"),
+                 menuSubItem("Search members", tabName="MPs_table", icon = NULL),
+                 menuSubItem("Constituency map", tabName="MPs_map", icon = NULL)
+                 ),
         menuItem("Select databases", tabName="databases", icon = icon("database"), 
                  menuSubItem(icon = NULL, checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE)),
                  menuSubItem(icon = NULL, checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE))
@@ -66,9 +69,13 @@ shinyUI(
                 ),
                 DT::dataTableOutput('pac_members_table')
         ),
-        tabItem(tabName="MPs",
-                tags$h3('Commons MPs'),
+        tabItem(tabName="MPs_table",
+                tags$h3('Search House of Commons MPs'),
                 DT::dataTableOutput('MPs')
+        ),
+        tabItem(tabName="MPs_map",
+                tags$h3('Constituency map'),
+                leafletOutput('MPs_map', width = "100%", height = 800)
         )
         #id = "tabs"
       )
