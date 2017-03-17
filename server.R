@@ -21,8 +21,11 @@ MPs_data <- xmlSApply(xmlRoot(xmlfile), function(x) c(xmlGetAttr(x, "Member_Id")
 MPs_df <- data.frame(t(MPs_data),row.names=NULL)
 #sapply(MPs_df, class)
 MPs_df$Party <- do.call("c", lapply(MPs_df$Party, "[[", 1))
+MPs_df$Party <- factor(MPs_df$Party)
 MPs_df$Gender <- do.call("c", lapply(MPs_df$Gender, "[[", 1))
+MPs_df$Gender <- factor(MPs_df$Gender)
 MPs_df$MemberFrom <- do.call("c", lapply(MPs_df$MemberFrom, "[[", 1))
+MPs_df$DisplayAs <- do.call("c", lapply(MPs_df$DisplayAs, "[[", 1))
 MPs_df <- mutate(MPs_df, mnisId=as.character(V1))
 MPs_df <- select(MPs_df, -V1)
 
@@ -200,7 +203,11 @@ shinyServer(function(input, output, session) {
   # http://rstudio.github.io/DT/
   output$MPs <- DT::renderDataTable(
     #MPs_data()$linked_Name = paste("<a href=", constituencyURL, ">", name, "</a>")) %>%
-    datatable(MPs_df, escape=TRUE, filter = 'top')
+    select(MPs_df, DisplayAs, Gender, Party, MemberFrom) %>%
+    datatable(escape=TRUE, 
+              filter = 'top',
+              caption = htmltools::tags$caption("This table lists all current House of Commons MPs, as listed on ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), "."),
+              options = list(pageLength = 50))
   )
     
   output$text_search_table <- DT::renderDataTable(

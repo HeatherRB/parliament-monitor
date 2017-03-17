@@ -31,7 +31,7 @@ shinyUI(
       sidebarMenu(
         menuItem("Text search", tabName="textSearch", icon = icon("search")),
         menuItem("PAC", tabName="pacMembers", icon = icon("institution")),
-        menuItem("MPs", tabName="MPs", icon = icon("users")),
+        menuItem("Commons MPs", tabName="MPs", icon = icon("users")),
         menuItem("Select databases", tabName="databases", icon = icon("database"), 
                  menuSubItem(icon = NULL, checkboxInput("commonsOralQuestionsCheckBox", "Commons Oral Questions", TRUE)),
                  menuSubItem(icon = NULL, checkboxInput("commonsWrittenQuestionsCheckBox", "Commons Written Questions", TRUE))
@@ -67,7 +67,7 @@ shinyUI(
                 DT::dataTableOutput('pac_members_table')
         ),
         tabItem(tabName="MPs",
-                tags$h3('Select PAC members'),
+                tags$h3('Commons MPs'),
                 DT::dataTableOutput('MPs')
         )
         #id = "tabs"
