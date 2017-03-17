@@ -56,6 +56,37 @@ elseNA <- function(x){
   }
 }
 
+getMnisId <- function(url) {
+  if (is.character(url)) {
+    v <- strsplit(url, "/")[[1]]
+  } else {
+    return('NA')
+  }
+  if (length(v)>=5) {
+    return(v[[5]])
+  } else {
+    return('NA')
+  }
+}
+
+collapseList <- function(l) {
+  if (!is.list(l)) {
+    return('NA')
+  } else {
+    return(l[[1]])
+  }
+}
+
+collapseAbout <- function(l) {
+  if (!is.list(l)) {
+    return('NA')
+  } else {
+    return(l$'_about')
+  }
+}
+
+lapply(MPs_df$Party, "[[", 1)
+
 # Get info on individual MPs
 getMPInfo <- function(mnisId){
   urlString <- paste("http://lda.data.parliament.uk/members/", mnisId, ".json", sep="")
@@ -77,16 +108,24 @@ getMPInfo <- function(mnisId){
   return(MPInfo)
 }
 
+getMemberUrl <- function(list) {
+  if(!is.null(list$tablingMember$'_about')) {
+    return(list$tablingMember$'_about')
+  } else {
+    return(do.call("c", lapply(list$tablingMember, collapseAbout)))
+  }
+}
+
 # Clean and format json data for written questions
 cleanWrittenQs <- function(json_data){
   list <- json_data$result$items
   list$AnswerDate <- list$AnswerDate$'_value'
   list$dateTabled <- list$dateTabled$'_value'
-  list$tablingMemberUrl <- list$tablingMember$'_about'
-  list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, "[[", 1))
-  list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, "[[", 1))
+  list$tablingMemberUrl <- getMemberUrl(list)
+  list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, collapseList))
+  list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, collapseList))
   list$type <- "Commons Written Question"
-  list$mnisId <- do.call("c", lapply(strsplit(list$tablingMemberUrl, "/"), "[[", 5))
+  list$mnisId <- do.call("c", lapply(list$tablingMemberUrl, getMnisId))
   list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, mnisId, type)
   return(list)
 }
@@ -96,12 +135,12 @@ cleanOralQs <- function(json_data){
   list <- json_data$result$items
   list$AnswerDate <- list$AnswerDate$'_value'
   list$dateTabled <- list$dateTabled$'_value'
-  list$tablingMemberUrl <- list$tablingMember$'_about'
-  list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, "[[", 1))
-  list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, "[[", 1))
+  list$tablingMemberUrl <- getMemberUrl(list)
+  list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, collapseList))
+  list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, collapseList))
   list$title <- list$Location$prefLabel$'_value'
   list$type <- "Commons Oral Question"
-  list$mnisId <- do.call("c", lapply(strsplit(list$tablingMemberUrl, "/"), "[[", 5))
+  list$mnisId <- do.call("c", lapply(list$tablingMemberUrl, getMnisId))
   list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, mnisId, type)
   return(list)
 }
@@ -241,7 +280,7 @@ shinyServer(function(input, output, session) {
     boundaries2 <- merge(boundaries2, partyColours)
     
     # Q: How to set deafult zoom?
-    # labels script https://rpubs.com/bhaskarvk/leaflet-labelssample.int(5L, nrow(countries), TRUE)
+    # labels script https://rpubs.com/bhaskarvk/leaflet-labels
     leaflet(boundaries2) %>%
       addPolygons(stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
                   label=mapply(function(x, y, z) {
@@ -261,7 +300,7 @@ shinyServer(function(input, output, session) {
   output$text_search_bars <- renderPlot({
     results_list <- text_search_data()
     results_list$fdate <- as.Date(results_list$dateTabled)
-    ggplot(results_list, aes(fdate)) + geom_histogram(binwidth=7)
+    ggplot(results_list, aes(fdate)) + geom_histogram() + labs(title = "Number of questions over time", x="Date", y="Number of questions")
   })
   
   output$pac_members_table <- DT::renderDataTable(

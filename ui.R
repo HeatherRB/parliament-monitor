@@ -53,7 +53,7 @@ shinyUI(
       
       tabItems(
         tabItem(tabName="textSearch", 
-                tags$h3('Search'),
+                tags$h2('Search Commons questions'),
                 textInput("searchInput", label=NULL, value="e.g., National Audit Office"),
                 fluidRow(
                          box(width=8, plotOutput('text_search_bars')),
@@ -62,7 +62,7 @@ shinyUI(
                 DT::dataTableOutput('text_search_table')
         ),
         tabItem(tabName="pacMembers",
-                tags$h3('Select PAC members'),
+                tags$h2('Select PAC members'),
                 checkboxInput("PAC", "All PAC members", FALSE),
                 fluidRow(
                   box(width=12, plotOutput('pac_members_bars'))
@@ -70,11 +70,11 @@ shinyUI(
                 DT::dataTableOutput('pac_members_table')
         ),
         tabItem(tabName="MPs_table",
-                tags$h3('Search House of Commons MPs'),
+                tags$h2('Search House of Commons MPs'),
                 DT::dataTableOutput('MPs')
         ),
         tabItem(tabName="MPs_map",
-                tags$h3('Constituency map'),
+                tags$h2('Constituency map'),
                 leafletOutput('MPs_map', width = "100%", height = 800)
         )
         #id = "tabs"
