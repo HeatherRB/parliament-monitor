@@ -11,16 +11,18 @@ library(leaflet) # for plotting maps https://rstudio.github.io/leaflet/
 library(rgdal) # for reading shape files (readOGR) https://www.r-bloggers.com/things-i-forget-reading-a-shapefile-in-r-with-readogr/
 library(htmltools)
 
+# Set-up ------------------------------------------------------------------
+
+# Members of PAC (by ID)
 mnisIdsPAC <- c(1524, 1451, 4388, 3971, 4040, 389, 4451, 3929, 4134, 4136, 4249, 4046, 1454, 4444, 4531)
 # source: http://www.parliament.uk/business/committees/committees-a-z/commons-select/public-accounts-committee/membership/
 
-# set up data on party colours
+# Data on party colours
 Party <- c("Labour", "Labour (Co-op)", "Conservative", 
-             "Scottish National Party", "Plaid Cymru", "Green Party",
+           "Scottish National Party", "Plaid Cymru", "Green Party",
            "Speaker", "Liberal Democrat", "UK Independence Party", "Independent",
            "Democratic Unionist Party", "Ulster Unionist Party", 
            "Social Democratic & Labour Party", "Sinn Fein")
-
 colour <- c("red", "red", "royalblue",
              "yellow", "forestgreen", "green",
              "gray", "orange", "purple", "gray",
@@ -31,7 +33,7 @@ partyColoursGB <- partyColours[1:10,]
 partyColours$Party <- factor(partyColours$Party)
 partyColours$colour <- factor(partyColours$colour)
 
-# list to store info on individual MPs
+# Data on commons MPs
 # http://data.parliament.uk/MembersDataPlatform/memberquery.aspx
 MPs_XML <- getURL("http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons/", ssl.verifypeer = FALSE)
 xmlfile <- xmlTreeParse(MPs_XML)
@@ -47,8 +49,10 @@ MPs_df$DisplayAs <- do.call("c", lapply(MPs_df$DisplayAs, "[[", 1))
 MPs_df <- mutate(MPs_df, mnisId=as.character(V1))
 MPs_df <- select(MPs_df, -V1)
 
-# function to check for null values and replace with 'NA'
+# Cleaning and checking functions ------------------------------------------------------------------
+
 elseNA <- function(x){
+  # function to check for null values and replace with 'NA'
   if (is.null(x)) {
     return('NA')
   } else {
@@ -57,6 +61,9 @@ elseNA <- function(x){
 }
 
 getMnisId <- function(url) {
+  # retrieves an MPs ID from their data.parliament URL
+  # e.g. url <- "http://data.parliament.uk/members/3973" returns "3973"
+  # invalid URL returns 'NA'
   if (is.character(url)) {
     v <- strsplit(url, "/")[[1]]
   } else {
@@ -70,6 +77,7 @@ getMnisId <- function(url) {
 }
 
 collapseList <- function(l) {
+  # transforms a list of lists into a list containing the first element of a each list
   if (!is.list(l)) {
     return('NA')
   } else {
@@ -78,6 +86,7 @@ collapseList <- function(l) {
 }
 
 collapseAbout <- function(l) {
+  # transforms a list of lists into a list containing the '_about' element of a each list
   if (!is.list(l)) {
     return('NA')
   } else {
@@ -85,30 +94,9 @@ collapseAbout <- function(l) {
   }
 }
 
-lapply(MPs_df$Party, "[[", 1)
-
-# Get info on individual MPs
-getMPInfo <- function(mnisId){
-  urlString <- paste("http://lda.data.parliament.uk/members/", mnisId, ".json", sep="")
-  json_file <- getURL(urlString, ssl.verifypeer = FALSE)
-  json_data <- fromJSON(json_file)
-  info <- json_data$result$primaryTopic
-  MPInfo <- vector(length = 8)
-  #MPInfo.names <- c("name", "Id", "constituency", "constituencyURL", "gender", "website", "party", "twitter")
-  MPInfo <- c(
-              name = elseNA(info$fullName$'_value'[1]),
-              Id = elseNA(mnisId),
-              constituency = elseNA(info$constituency$label$'_value'[1]),
-              constituencyURL = elseNA(info$constituency$'_about'[1]),
-              gender = elseNA(info$gender$'_value'[1]),
-              website = elseNA(info$homePage[1]),
-              party = elseNA(info$party$'_value'[1]),
-              twitter = elseNA(info$twitter$'_value'[1])
-              )
-  return(MPInfo)
-}
-
 getMemberUrl <- function(list) {
+  # Deals with columns with different formats, i.e., column format (where list$tablingMember$'_about' exists)
+  # and list of list format (where elements of list$tablingMember are lists, some of which are missing an '_about' element)
   if(!is.null(list$tablingMember$'_about')) {
     return(list$tablingMember$'_about')
   } else {
@@ -116,46 +104,36 @@ getMemberUrl <- function(list) {
   }
 }
 
-# Clean and format json data for written questions
-cleanWrittenQs <- function(json_data){
-  list <- json_data$result$items
-  if (length(list)==0) {
-    return(NULL)
-  } else {
-    list$AnswerDate <- list$AnswerDate$'_value'
-    list$dateTabled <- list$dateTabled$'_value'
-    list$tablingMemberUrl <- getMemberUrl(list)
-    list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, collapseList))
-    list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, collapseList))
-    list$type <- "Commons Written Question"
-    list$mnisId <- do.call("c", lapply(list$tablingMemberUrl, getMnisId))
-    list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, mnisId, type)
-    return(list)
-  }
-}
-
-# Clean and format json data for oral questions
-cleanOralQs <- function(json_data){
-  list <- json_data$result$items
-  if (length(list)==0) {
-    return(NULL)
-  } else {
-    list$AnswerDate <- list$AnswerDate$'_value'
-    list$dateTabled <- list$dateTabled$'_value'
-    list$tablingMemberUrl <- getMemberUrl(list)
-    list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, collapseList))
-    list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, collapseList))
-    list$title <- list$Location$prefLabel$'_value'
-    list$type <- "Commons Oral Question"
-    list$mnisId <- do.call("c", lapply(list$tablingMemberUrl, getMnisId))
-    list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, mnisId, type)
-    return(list)
-  }
-}
-
-# Get json data and append to existing results
-getJsonData <- function(urlString, results_list, qType){
+cleanQs <- function(json_data, questionType){
+  # Clean and format json data for commons written/oral questions
+  # accepts json_data (data.frame) and a questionType (string)
+  # returns a data frame (or NULL if no results have been found)
   
+  list <- json_data$result$items
+  
+  if (length(list)==0) {
+    return(NULL)
+  } else {
+    list$AnswerDate <- list$AnswerDate$'_value'
+    list$dateTabled <- list$dateTabled$'_value'
+    list$tablingMemberUrl <- getMemberUrl(list)
+    list$tablingMemberPrinted <- do.call("c", lapply(list$tablingMemberPrinted, collapseList))
+    list$AnsweringBody <- do.call("c", lapply(list$AnsweringBody, collapseList))
+    list$type <- questionType
+    list$mnisId <- do.call("c", lapply(list$tablingMemberUrl, getMnisId))
+    list <- select(list, About=`_about`, AnswerDate, AnsweringBody, dateTabled, questionText, tablingMemberUrl, tablingMemberPrinted, mnisId, type)
+    return(list)
+  }
+}
+
+# Functions for retrieving data ------------------------------------------------------------------
+
+getJsonData <- function(urlString, results_list, qType){
+  # Get json data and append to existing results
+  # accepts urlString (string), results_list (data.frame), qType ("oral" or "written")
+  # returns an appended data frame (or NULL if no results have been found)
+  
+  # ignore null URLs
   if(is.null(urlString)) {
     return(results_list)
   }
@@ -166,14 +144,15 @@ getJsonData <- function(urlString, results_list, qType){
   
   # clean json data according to its type
   if (qType == "oral") {
-    new_results <- cleanOralQs(json_data)
+    new_results <- cleanQs(json_data, "Commons Oral Question")
   } else if (qType == "written") {
-    new_results <- cleanWrittenQs(json_data)
+    new_results <- cleanQs(json_data, "Commons Written Question")
   } else {
     new_results <- NULL
   }
   
   # append to existing data
+  # if new_results is null this section has no effect
   if (is.null(results_list)) {
     results_list <- new_results
   } else if (!is.null(new_results)) {
@@ -182,23 +161,29 @@ getJsonData <- function(urlString, results_list, qType){
   
   return(results_list)
 }
+
   
 shinyServer(function(input, output, session) {
   
-  # search criteria
+  # Text search ------------------------------------------------------------------
+  
   queryString <- reactive({
+    # search criteria (string)
     string <- sub("e.g., ", "", input$searchInput)
     string <- gsub(" ", "+AND+", string)
     paste("&_search=", string, sep="")
   })
   
-  # load data for text search
   text_search_data <- reactive({
+    # loads results for text search
+    # returns NULL if no results have been found
+    
     results_list <- NULL
     pageSize <- input$text_search_results
+    
     if (input$commonsWrittenQuestionsCheckBox) {
-      # urlString <- "http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=25" 
       urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=", pageSize, "&_search=", queryString(), sep="")
+      # e.g., urlString <- "http://lda.data.parliament.uk/commonswrittenquestions.json?_view=Written+Questions&_pageSize=25"
       results_list <- getJsonData(urlString, results_list, "written")
     }
     if (input$commonsOralQuestionsCheckBox) {
@@ -210,24 +195,40 @@ shinyServer(function(input, output, session) {
       # incorporate data on MPs and sort by date
       results_list <- merge(results_list, select(MPs_df, mnisId, MemberFrom, Party))
       results_list$dateTabled <- as.Date(results_list$dateTabled)
+      results_list$type <- factor(results_list$type)
       results_list <- results_list[rev(order(results_list$dateTabled)),]
     }
     results_list
   })
   
-  MPs_data <- reactive({
-    v <- unique(text_search_data()$mnisId)
-    MPs.names <- v
-    for (Id in v) {
-      MPs[[Id]] <- getMPInfo(Id)
-    }
-    t(as.data.frame(MPs))
+  output$text_search_table <- DT::renderDataTable(
+    # data table output for text search
+    # returns NULL if no results have been found
+    text_search_data() %>% 
+      select(dateTabled, tablingMemberPrinted, MemberFrom, Party, questionText, AnsweringBody, type) %>%
+      #select(-mnisId, -About, -tablingMemberUrl, -AnswerDate) %>% 
+      datatable(escape=TRUE, filter = 'top', rownames = FALSE, 
+                options = list(dom = 't'), #show table only, not search box
+                caption = htmltools::tags$caption("The table below lists the most recent results for your search term, as listed on ", htmltools::a(href="http://data.parliament.uk/", target="_blank", "data.parliament.uk"), ". Refine your results using the filters in the column headers."),
+                colnames = c('Date'='dateTabled', 'Tabling member'='tablingMemberPrinted', 'Constituency'='MemberFrom', 'Party'='Party', 'Question text'='questionText', 'Answering body'='AnsweringBody', 'Question type' = 'type'))
+  )
+  
+  output$text_search_bars <- renderPlot({
+    ggplot(data=text_search_data(), aes(dateTabled)) + geom_histogram() + labs(title = "Number of questions over time", x="Date", y="Number of questions")
   })
   
-  # load data for PAC members
+  output$party_bars <- renderPlot({
+    ggplot(data=text_search_data(), aes(factor(Party))) + geom_bar() + coord_flip() + labs(title = "Number of questions by party", x="Party", y="Number of questions")
+  })
+  
+  # PAC members ------------------------------------------------------------------
+  
   pac_members_data <- reactive({
+    # loads results for PAC members
+    
     results_list <- NULL
     pageSize <- input$pac_member_results
+    
     if (input$commonsWrittenQuestionsCheckBox) {
       for (mnisId in mnisIdsPAC) {
         urlString <- paste("http://lda.data.parliament.uk/commonswrittenquestions.json?mnisId=", mnisId, "&_view=Written+Questions&_pageSize=", pageSize, sep="")
@@ -245,47 +246,41 @@ shinyServer(function(input, output, session) {
       # incorporate data on MPs and sort by date
       results_list <- merge(results_list, select(MPs_df, mnisId, MemberFrom, Party))
       results_list$dateTabled <- as.Date(results_list$dateTabled)
+      results_list$type <- factor(results_list$type)
       results_list <- results_list[rev(order(results_list$dateTabled)),]
     }
     results_list
   })
   
-  # bars
-  #bars <- reactive({
-    #results_list <- data()
-    #results_list$fdate <- factor(format(as.Date(results_list$dateTabled),'%Y-%m'))
-    #results_list$month <- factor(format(as.Date(results_list$dateTabled),'%b %y'))
-    #bars_data <- summarise(group_by(results_list, fdate, month), n=n())
-    #date1 <- paste(bars_data$fdate[1],"01", sep="-")
-    #date2 <- paste(bars_data$fdate[nrow(bars_data)],"01", sep="-")
-    #month_list <- data.frame(date=c(seq(as.Date(date1),to=as.Date(date2),by='month')))
-    #month_list$fdate <- factor(format(as.Date(month_list$date),'%Y-%m'))
-    #merge(month_list, bars_data, all.x=TRUE)
-  #})
+  output$pac_members_table <- DT::renderDataTable(
+    # data table output for PAC members' questions
+    pac_members_data() %>% 
+      select(dateTabled, tablingMemberPrinted, MemberFrom, Party, questionText, AnsweringBody, type) %>% 
+      datatable(escape=TRUE, filter = 'top', rownames = FALSE, 
+                options = list(dom = 't'), #show table only, not search box
+                caption = htmltools::tags$caption("The table below lists the most recent results for PAC members, as listed on ", htmltools::a(href="http://data.parliament.uk/", target="_blank", "data.parliament.uk"), ". Refine your results using the filters in the column headers."),
+                colnames = c('Date' = 'dateTabled', 'Tabling member' = 'tablingMemberPrinted', 'Constituency'='MemberFrom', 'Party'='Party', 'Question text' = 'questionText', 'Answering body' = 'AnsweringBody', 'Question type' = 'type'))
+  )
   
-  #output$bar_chart <- renderPlot({
-    #barplot(bars()$n, names.arg = bars()$month)
-    #ggplot(bars()$n, aes=(bars()$month))
-    #results_list <- text_search_data()
-    #results_list$fdate <- as.Date(results_list$dateTabled)
-    #summarise(group_by(results_list, fdate), n=n()) %>%
-    #ggplot(results_list, aes(fdate)) + geom_histogram(binwidth=7) #+ scale_x_date(date_labels = "%b %Y", limits = c(as.Date("2016-01-01"), Sys.Date()))
-  #})
+  output$pac_members_bars <- renderPlot({
+    ggplot(pac_members_data(), aes(dateTabled)) + geom_histogram() + labs(title = "Number of questions over time", x="Date", y="Number of questions")
+  })
+  
+  # Commons members ------------------------------------------------------------------
 
-  # put MPs data into a DT data table
-  # http://rstudio.github.io/DT/
   output$MPs <- DT::renderDataTable(
+    # data table output for MP data
     #MPs_data()$linked_Name = paste("<a href=", constituencyURL, ">", name, "</a>")) %>%
     select(MPs_df, DisplayAs, Gender, Party, MemberFrom) %>%
-    datatable(escape=TRUE, filter = 'top', rownames = FALSE,
+    datatable(escape=TRUE, filter = 'top', rownames = FALSE, 
+              options = list(dom = 't'), #show table only, not search box
               colnames = c('Name' = 'DisplayAs', 'Constituency' = 'MemberFrom'),
-              caption = htmltools::tags$caption("This table lists all current House of Commons MPs, as listed on ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), "."),
+              caption = htmltools::tags$caption("The table below lists all current House of Commons MPs, as listed on ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), ". Search the list using the filters in the column headers."),
               options = list(pageLength = 50))
   )
   
   output$MPs_map <- renderLeaflet({
     # open and transform constituency boundary file
-    # 
     boundaries <- readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Super_Generalised_Clipped_Boundaries_in_Great_Britain")
     boundaries2 <- spTransform(boundaries, CRS("+init=epsg:4326"))
     
@@ -304,49 +299,85 @@ shinyServer(function(input, output, session) {
                   fillColor = ~colour) %>%
       addLegend(colors = partyColoursGB$colour, labels = partyColoursGB$Party, opacity = 0.7)
   })
-    
-  output$text_search_table <- DT::renderDataTable(
-    text_search_data() %>% 
-      select(dateTabled, tablingMemberPrinted, MemberFrom, Party, questionText, AnsweringBody, type) %>%
-      #select(-mnisId, -About, -tablingMemberUrl, -AnswerDate) %>% 
-      datatable(escape=TRUE, filter = 'top', rownames = FALSE,
-                caption = htmltools::tags$caption("This table lists the most recent results for your search term, as listed on ", htmltools::a(href="http://data.parliament.uk/", target="_blank", "data.parliament.uk"), "."),
-                colnames = c('Date'='dateTabled', 'Tabling member'='tablingMemberPrinted', 'Constituency'='MemberFrom', 'Party'='Party', 'Question text'='questionText', 'Answering body'='AnsweringBody', 'Question type' = 'type'))
-  )
-  
-  output$text_search_bars <- renderPlot({
-    results_list <- text_search_data()
-    ggplot(results_list, aes(dateTabled)) + geom_histogram() + labs(title = "Number of questions over time", x="Date", y="Number of questions")
-  })
-  
-  output$pac_members_table <- DT::renderDataTable(
-    pac_members_data() %>% 
-      select(dateTabled, tablingMemberPrinted, MemberFrom, Party, questionText, AnsweringBody, type) %>% 
-      datatable(escape=TRUE, filter = 'top', rownames = FALSE,
-                caption = htmltools::tags$caption("This table lists the most recent results for PAC members, as listed on ", htmltools::a(href="http://data.parliament.uk/", target="_blank", "data.parliament.uk"), "."),
-                colnames = c('Date' = 'dateTabled', 'Tabling member' = 'tablingMemberPrinted', 'Constituency'='MemberFrom', 'Party'='Party', 'Question text' = 'questionText', 'Answering body' = 'AnsweringBody', 'Question type' = 'type'))
-  )
-  
-  output$pac_members_bars <- renderPlot({
-    results_list <- pac_members_data()
-    ggplot(results_list, aes(dateTabled)) + geom_histogram() + labs(title = "Number of questions over time", x="Date", y="Number of questions")
-  })
-  
-  output$party_bars <- renderPlot({
-    ggplot(data=text_search_data(), aes(factor(Party))) + geom_bar() + coord_flip() + labs(title = "Number of questions by party", x="Party", y="Number of questions")
-  })
-  
-  output$page_head <- renderUI({
-    HTML(paste("<b>Dimensions:</b><br/><ul><li>"))
-  })
-  
-  output$queryText <- renderText({ 
-    queryString()
-  })
-  
-  output$tabText <- renderText({ 
-    tab()
-  })
-  
   
 })
+
+# Obsolete functions ------------------------------------------------------------------
+
+#The following two functions on MPs data have been replaced by the MPs_XML data source
+# http://data.parliament.uk/MembersDataPlatform/memberquery.aspx
+
+#MPs_data <- reactive({
+  # get info on the MPs asking commons questions
+  #v <- unique(text_search_data()$mnisId)
+  #MPs.names <- v
+  #for (Id in v) {
+  #  MPs[[Id]] <- getMPInfo(Id)
+  #}
+  #t(as.data.frame(MPs))
+#})
+
+#getMPInfo <- function(mnisId){
+  # Get info on individual MPs by ID
+  #urlString <- paste("http://lda.data.parliament.uk/members/", mnisId, ".json", sep="")
+  #json_file <- getURL(urlString, ssl.verifypeer = FALSE)
+  #json_data <- fromJSON(json_file)
+  #info <- json_data$result$primaryTopic
+  #MPInfo <- vector(length = 8)
+  ##MPInfo.names <- c("name", "Id", "constituency", "constituencyURL", "gender", "website", "party", "twitter")
+  #MPInfo <- c(
+    #name = elseNA(info$fullName$'_value'[1]),
+    #Id = elseNA(mnisId),
+    #constituency = elseNA(info$constituency$label$'_value'[1]),
+    #constituencyURL = elseNA(info$constituency$'_about'[1]),
+    #gender = elseNA(info$gender$'_value'[1]),
+    #website = elseNA(info$homePage[1]),
+    #party = elseNA(info$party$'_value'[1]),
+    #twitter = elseNA(info$twitter$'_value'[1])
+  #)
+  #return(MPInfo)
+#}
+
+# Another former source of data on MPs
+
+# http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/
+# Members
+#json_file <- getURL("http://lda.data.parliament.uk/members.json?_pageSize=100", ssl.verifypeer = FALSE)
+#json_data <- fromJSON(json_file)
+#members_list <- json_data$result$items
+
+
+#The following two functions attempted to tailor the histogram of questions over time
+
+# bars
+#bars <- reactive({
+#results_list <- data()
+#results_list$fdate <- factor(format(as.Date(results_list$dateTabled),'%Y-%m'))
+#results_list$month <- factor(format(as.Date(results_list$dateTabled),'%b %y'))
+#bars_data <- summarise(group_by(results_list, fdate, month), n=n())
+#date1 <- paste(bars_data$fdate[1],"01", sep="-")
+#date2 <- paste(bars_data$fdate[nrow(bars_data)],"01", sep="-")
+#month_list <- data.frame(date=c(seq(as.Date(date1),to=as.Date(date2),by='month')))
+#month_list$fdate <- factor(format(as.Date(month_list$date),'%Y-%m'))
+#merge(month_list, bars_data, all.x=TRUE)
+#})
+
+#output$bar_chart <- renderPlot({
+#barplot(bars()$n, names.arg = bars()$month)
+#ggplot(bars()$n, aes=(bars()$month))
+#results_list <- text_search_data()
+#results_list$fdate <- as.Date(results_list$dateTabled)
+#summarise(group_by(results_list, fdate), n=n()) %>%
+#ggplot(results_list, aes(fdate)) + geom_histogram(binwidth=7) #+ scale_x_date(date_labels = "%b %Y", limits = c(as.Date("2016-01-01"), Sys.Date()))
+#})
+
+
+#The following two outputs are obsolete output types
+
+#output$page_head <- renderUI({
+  #HTML(paste("<b>Dimensions:</b><br/><ul><li>"))
+#})
+
+#output$tabText <- renderText({ 
+  #tab()
+#})

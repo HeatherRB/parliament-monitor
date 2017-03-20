@@ -6,13 +6,6 @@ library(RCurl)
 library(DT) # for data tables http://rstudio.github.io/DT/
 library(leaflet) # for plotting maps https://rstudio.github.io/leaflet/
 
-# http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/
-# Members
-#json_file <- getURL("http://lda.data.parliament.uk/members.json?_pageSize=100", ssl.verifypeer = FALSE)
-#json_data <- fromJSON(json_file)
-#members_list <- json_data$result$items
-
-
 shinyUI(
   dashboardPage(skin = "blue",
     
@@ -57,8 +50,8 @@ shinyUI(
                 tags$h2('Search Commons questions'),
                 textInput("searchInput", label=NULL, value="e.g., National Audit Office"),
                 fluidRow(
-                         box(width=6, plotOutput('text_search_bars')),
-                         box(width=6, plotOutput('party_bars'))
+                         box(width=7, plotOutput('text_search_bars')),
+                         box(width=5, plotOutput('party_bars'))
                          ),
                 DT::dataTableOutput('text_search_table')
         ),
