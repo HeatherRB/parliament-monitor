@@ -3,7 +3,8 @@ library(shinydashboard) # https://rstudio.github.io/shinydashboard/
 library(jsonlite)
 library(XML)
 library(RCurl)
-library(DT)
+library(DT) # for data tables http://rstudio.github.io/DT/
+library(leaflet) # for plotting maps https://rstudio.github.io/leaflet/
 
 # http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/
 # Members
@@ -56,14 +57,14 @@ shinyUI(
                 tags$h2('Search Commons questions'),
                 textInput("searchInput", label=NULL, value="e.g., National Audit Office"),
                 fluidRow(
-                         box(width=8, plotOutput('text_search_bars')),
-                         box(width=4, plotOutput('party_bars'))
+                         box(width=6, plotOutput('text_search_bars')),
+                         box(width=6, plotOutput('party_bars'))
                          ),
                 DT::dataTableOutput('text_search_table')
         ),
         tabItem(tabName="pacMembers",
-                tags$h2('Select PAC members'),
-                checkboxInput("PAC", "All PAC members", FALSE),
+                tags$h2('Questions from PAC members'),
+                #checkboxInput("PAC", "All PAC members", FALSE),
                 fluidRow(
                   box(width=12, plotOutput('pac_members_bars'))
                 ),
