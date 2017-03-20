@@ -214,11 +214,32 @@ shinyServer(function(input, output, session) {
   )
   
   output$text_search_bars <- renderPlot({
-    ggplot(data=text_search_data(), aes(dateTabled)) + geom_histogram() + labs(title = "Number of questions over time", x="Date", y="Number of questions")
+    results_list <- text_search_data()
+    #results_list$month <- paste(format(as.Date(results_list$dateTabled), format='%Y-%m'), '-01', sep="")
+    #levels <- unique(results_list$month[order(results_list$dateTabled)])
+    #results_list$month <- factor(results_list$month, levels = levels)
+    #select(-mnisId, -About, -tablingMemberUrl, -AnswerDate) %>% 
+    date1 <- paste(format(min(results_list$dateTabled), '%Y-%m'), "-01", sep="")
+    date2 <- paste(format(Sys.Date(), '%Y-%m'), "-01", sep="")
+    seq <- seq(as.Date(date1),to=as.Date(date2), by='month')
+    n <- length(seq)
+    m <- n %/% 3
+    seq2 <- seq[3*(0:m)]
+    labels <- format(as.Date(seq2), '%b %y')
+    #ggplot(results_list, aes(month)) + geom_bar() + labs(title = "Number of questions over time", x="Month", y="Number of questions") + scale_x_date(breaks = seq2, labels = labels)
+    ggplot(data=results_list, aes(dateTabled)) +
+      geom_histogram(binwidth=30.5, boundary = as.Date(date1), colour = "gray28", fill = "gray48") +
+      labs(title = "Number of questions per month", x="Date", y="Number of questions") +
+      scale_x_date(breaks = seq2, labels = labels)
   })
   
   output$party_bars <- renderPlot({
-    ggplot(data=text_search_data(), aes(factor(Party))) + geom_bar() + coord_flip() + labs(title = "Number of questions by party", x="Party", y="Number of questions")
+    bars <- summarise(group_by(text_search_data(), Party), n=n())
+    bars$Party <- factor(bars$Party, levels=(bars$Party[order(bars$n)]))
+    ggplot(bars, aes(x=Party, y=n)) + 
+      geom_bar(stat="identity", colour = "gray28", fill = "gray48") + 
+      coord_flip() + 
+      labs(title = "Number of questions by party", x="Party", y="Number of questions")
   })
   
   # PAC members ------------------------------------------------------------------
@@ -263,7 +284,25 @@ shinyServer(function(input, output, session) {
   )
   
   output$pac_members_bars <- renderPlot({
-    ggplot(pac_members_data(), aes(dateTabled)) + geom_histogram() + labs(title = "Number of questions over time", x="Date", y="Number of questions")
+    #ggplot(pac_members_data(), aes(dateTabled)) + geom_histogram() + labs(title = "Number of questions over time", x="Date", y="Number of questions")
+    results_list <- pac_members_data()
+    #results_list$month <- format(as.Date(results_list$dateTabled), format='%b %y')
+    #levels <- unique(results_list$month[order(results_list$dateTabled)])
+    #results_list$month <- factor(results_list$month, levels = levels)
+    #select(-mnisId, -About, -tablingMemberUrl, -AnswerDate) %>% 
+    #ggplot(results_list, aes(month)) + geom_bar() + labs(title = "Number of questions over time", x="Month", y="Number of questions")
+    date1 <- paste(format(min(results_list$dateTabled), '%Y-%m'), "-01", sep="")
+    date2 <- paste(format(Sys.Date(), '%Y-%m'), "-01", sep="")
+    seq <- seq(as.Date(date1),to=as.Date(date2), by='month')
+    n <- length(seq)
+    m <- n %/% 3
+    seq2 <- seq[3*(0:m)]
+    labels <- format(as.Date(seq2), '%b %y')
+
+    ggplot(data=results_list, aes(dateTabled)) +
+      geom_histogram(binwidth=30.5, boundary = as.Date(date1), colour = "gray28", fill = "gray48") +
+      labs(title = "Number of questions per month", x="Date", y="Number of questions") +
+      scale_x_date(breaks = seq2, labels = labels)
   })
   
   # Commons members ------------------------------------------------------------------
