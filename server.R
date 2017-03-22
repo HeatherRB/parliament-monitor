@@ -208,7 +208,7 @@ shinyServer(function(input, output, session) {
       select(dateTabled, tablingMemberPrinted, MemberFrom, Party, questionText, AnsweringBody, type) %>%
       #select(-mnisId, -About, -tablingMemberUrl, -AnswerDate) %>% 
       datatable(escape=TRUE, filter = 'top', rownames = FALSE, 
-                options = list(dom = 't'), #show table only, not search box
+                options = list(dom = 'tp'), #show table only, not search box
                 caption = htmltools::tags$caption("The table below lists the most recent results for your search term, as listed on ", htmltools::a(href="http://data.parliament.uk/", target="_blank", "data.parliament.uk"), ". Refine your results using the filters in the column headers."),
                 colnames = c('Date'='dateTabled', 'Tabling member'='tablingMemberPrinted', 'Constituency'='MemberFrom', 'Party'='Party', 'Question text'='questionText', 'Answering body'='AnsweringBody', 'Question type' = 'type'))
   )
@@ -278,7 +278,7 @@ shinyServer(function(input, output, session) {
     pac_members_data() %>% 
       select(dateTabled, tablingMemberPrinted, MemberFrom, Party, questionText, AnsweringBody, type) %>% 
       datatable(escape=TRUE, filter = 'top', rownames = FALSE, 
-                options = list(dom = 't'), #show table only, not search box
+                options = list(dom = 'tp'), #show table only, not search box
                 caption = htmltools::tags$caption("The table below lists the most recent results for PAC members, as listed on ", htmltools::a(href="http://data.parliament.uk/", target="_blank", "data.parliament.uk"), ". Refine your results using the filters in the column headers."),
                 colnames = c('Date' = 'dateTabled', 'Tabling member' = 'tablingMemberPrinted', 'Constituency'='MemberFrom', 'Party'='Party', 'Question text' = 'questionText', 'Answering body' = 'AnsweringBody', 'Question type' = 'type'))
   )
@@ -305,6 +305,45 @@ shinyServer(function(input, output, session) {
       scale_x_date(breaks = seq2, labels = labels)
   })
   
+  
+  output$PAC_map <- renderLeaflet({
+    # open and transform constituency boundary file
+    boundaries <- readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Super_Generalised_Clipped_Boundaries_in_Great_Britain")
+    boundaries2 <- spTransform(boundaries, CRS("+init=epsg:4326"))
+    
+    # merge in data on MPs
+    # Q: Are there gaps after merging on name?
+    boundaries2 <- merge(boundaries2, select(MPs_df, mnisId, DisplayAs, MemberFrom, Party), by.x="pcon15nm", by.y="MemberFrom")
+    boundaries2 <- merge(boundaries2, partyColours)
+    
+    # Filter to show only PAC members
+    boundaries3 <- subset(boundaries2, boundaries2$mnisId %in% as.character(mnisIdsPAC))
+    
+    # Q: How to set deafult zoom?
+    # labels script https://rpubs.com/bhaskarvk/leaflet-labels
+    leaflet() %>%
+      addPolygons(data=boundaries2, stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
+                  fillColor = "#888888") %>%
+      addPolygons(data=boundaries3, stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
+                  label=mapply(function(x, y, z) {
+                    htmltools::HTML(sprintf("%s <br>Member: %s, %s", htmlEscape(x), htmlEscape(y), htmlEscape(z)))}, 
+                    boundaries3$pcon15nm, boundaries3$DisplayAs, boundaries3$Party, SIMPLIFY = F),
+                  fillColor = ~colour) %>%
+      addLegend(colors = partyColoursGB$colour, labels = partyColoursGB$Party, opacity = 0.7)
+  })
+  
+  output$PAC_table <- DT::renderDataTable(
+    # data table output for MP data
+    #MPs_data()$linked_Name = paste("<a href=", constituencyURL, ">", name, "</a>")) %>%
+    # Filter to show only PAC members
+    subset(MPs_df, MPs_df$mnisId %in% as.character(mnisIdsPAC)) %>%
+      select(DisplayAs, Gender, Party, MemberFrom) %>%
+      datatable(escape=TRUE, rownames = FALSE, 
+                options = list(dom = 't', pageLength = 50), #show table only, not search box
+                colnames = c('Name' = 'DisplayAs', 'Constituency' = 'MemberFrom'),
+                caption = htmltools::tags$caption("The table below lists all PAC members, using data from ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), "."))
+  )
+  
   # Commons members ------------------------------------------------------------------
 
   output$MPs <- DT::renderDataTable(
@@ -312,10 +351,9 @@ shinyServer(function(input, output, session) {
     #MPs_data()$linked_Name = paste("<a href=", constituencyURL, ">", name, "</a>")) %>%
     select(MPs_df, DisplayAs, Gender, Party, MemberFrom) %>%
     datatable(escape=TRUE, filter = 'top', rownames = FALSE, 
-              options = list(dom = 't'), #show table only, not search box
+              options = list(dom = 'tp', pageLength = 50), #show table only, not search box
               colnames = c('Name' = 'DisplayAs', 'Constituency' = 'MemberFrom'),
-              caption = htmltools::tags$caption("The table below lists all current House of Commons MPs, as listed on ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), ". Search the list using the filters in the column headers."),
-              options = list(pageLength = 50))
+              caption = htmltools::tags$caption("The table below lists all current House of Commons MPs, as listed on ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), ". Search the list using the filters in the column headers."))
   )
   
   output$MPs_map <- renderLeaflet({
