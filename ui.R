@@ -57,7 +57,7 @@ shinyUI(
                 tags$div('The menu on the left allows you to switch between three main functions:',
                   tags$ul(
                     tags$li(tags$b('Keyword search'), " - Search written and oral questions from the House of Commons with keyword(s). The search covers all fields, so you can search on the question, an MPs name, or the body answering the question. You can then filter your results by date, question type and political party."),
-                    tags$li(tags$b('PAC'), " - View written and oral questions from members of PAC. As with the text search, you can then filter the results by date, question type and political party."),
+                    tags$li(tags$b('PAC'), " - View members of PAC, their constituencies, and their recent written and oral questions. As with the text search, you can filter written and oral questions by date, question type and political party."),
                     tags$li(tags$b('House of Commons MPs'), " - Listing of members of the House of Commons, including constituency and political party. You can search the listing as a table or view a constituency map.")
                   )
                 ),
