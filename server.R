@@ -165,6 +165,19 @@ getJsonData <- function(urlString, results_list, qType){
   
 shinyServer(function(input, output, session) {
   
+  # Constituency boundaries ------------------------------------------------------------------
+  
+  boundaries <- reactive({
+    # open and transform constituency boundary file
+    # merge in data on MPs
+    # Q: Are there gaps after merging on name?
+    # not actually reactive but shared between outputs and only loaded when needed
+    readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Super_Generalised_Clipped_Boundaries_in_Great_Britain") %>%
+    spTransform(CRS("+init=epsg:4326")) %>%
+    merge(select(MPs_df, mnisId, DisplayAs, MemberFrom, Party), by.x="pcon15nm", by.y="MemberFrom") %>%
+    merge(partyColours)
+  })
+  
   # Text search ------------------------------------------------------------------
   
   queryString <- reactive({
@@ -307,27 +320,19 @@ shinyServer(function(input, output, session) {
   
   
   output$PAC_map <- renderLeaflet({
-    # open and transform constituency boundary file
-    boundaries <- readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Super_Generalised_Clipped_Boundaries_in_Great_Britain")
-    boundaries2 <- spTransform(boundaries, CRS("+init=epsg:4326"))
-    
-    # merge in data on MPs
-    # Q: Are there gaps after merging on name?
-    boundaries2 <- merge(boundaries2, select(MPs_df, mnisId, DisplayAs, MemberFrom, Party), by.x="pcon15nm", by.y="MemberFrom")
-    boundaries2 <- merge(boundaries2, partyColours)
     
     # Filter to show only PAC members
-    boundaries3 <- subset(boundaries2, boundaries2$mnisId %in% as.character(mnisIdsPAC))
+    boundaries2 <- subset(boundaries(), boundaries()$mnisId %in% as.character(mnisIdsPAC))
     
     # Q: How to set deafult zoom?
     # labels script https://rpubs.com/bhaskarvk/leaflet-labels
     leaflet() %>%
-      addPolygons(data=boundaries2, stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
+      addPolygons(data=boundaries(), stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
                   fillColor = "#888888") %>%
-      addPolygons(data=boundaries3, stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
+      addPolygons(data=boundaries2, stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
                   label=mapply(function(x, y, z) {
                     htmltools::HTML(sprintf("%s <br>Member: %s, %s", htmlEscape(x), htmlEscape(y), htmlEscape(z)))}, 
-                    boundaries3$pcon15nm, boundaries3$DisplayAs, boundaries3$Party, SIMPLIFY = F),
+                    boundaries2$pcon15nm, boundaries2$DisplayAs, boundaries2$Party, SIMPLIFY = F),
                   fillColor = ~colour) %>%
       addLegend(colors = partyColoursGB$colour, labels = partyColoursGB$Party, opacity = 0.7)
   })
@@ -357,22 +362,13 @@ shinyServer(function(input, output, session) {
   )
   
   output$MPs_map <- renderLeaflet({
-    # open and transform constituency boundary file
-    boundaries <- readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Super_Generalised_Clipped_Boundaries_in_Great_Britain")
-    boundaries2 <- spTransform(boundaries, CRS("+init=epsg:4326"))
-    
-    # merge in data on MPs
-    # Q: Are there gaps after merging on name?
-    boundaries2 <- merge(boundaries2, select(MPs_df, mnisId, DisplayAs, MemberFrom, Party), by.x="pcon15nm", by.y="MemberFrom")
-    boundaries2 <- merge(boundaries2, partyColours)
-    
     # Q: How to set deafult zoom?
     # labels script https://rpubs.com/bhaskarvk/leaflet-labels
-    leaflet(boundaries2) %>%
+    leaflet(boundaries()) %>%
       addPolygons(stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
                   label=mapply(function(x, y, z) {
                     htmltools::HTML(sprintf("%s <br>Member: %s, %s", htmlEscape(x), htmlEscape(y), htmlEscape(z)))}, 
-                    boundaries2$pcon15nm, boundaries2$DisplayAs, boundaries2$Party, SIMPLIFY = F),
+                    boundaries()$pcon15nm, boundaries()$DisplayAs, boundaries()$Party, SIMPLIFY = F),
                   fillColor = ~colour) %>%
       addLegend(colors = partyColoursGB$colour, labels = partyColoursGB$Party, opacity = 0.7)
   })
