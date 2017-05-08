@@ -35,7 +35,7 @@ partyColours$colour <- factor(partyColours$colour)
 
 # Data on commons MPs
 # http://data.parliament.uk/MembersDataPlatform/memberquery.aspx
-MPs_XML <- getURL("http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons/", ssl.verifypeer = FALSE)
+MPs_XML <- getURL("http://data.parliament.uk/membersdataplatform/services/mnis/members/query/House=Commons%7CMembership=all%7Ccommonsmemberbetween=2010-05-06and2018-03-31/", ssl.verifypeer = FALSE)
 xmlfile <- xmlTreeParse(MPs_XML)
 MPs_data <- xmlSApply(xmlRoot(xmlfile), function(x) c(xmlGetAttr(x, "Member_Id"), xmlSApply(x, xmlValue)))
 MPs_df <- data.frame(t(MPs_data),row.names=NULL)
