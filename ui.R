@@ -95,7 +95,7 @@ shinyUI(
         tabItem(tabName="PAC_map",
                 tags$h2("PAC members' constituency map"),
                 tags$br(),
-                tags$p('This page may take a few seconds to load - please be patient!'),
+                tags$p('Members of PAC as at April 2017. This page may take a few seconds to load - please be patient!'),
                 leafletOutput('PAC_map', width = "100%", height = 800)
         ),
         tabItem(tabName="MPs_table",
@@ -105,7 +105,7 @@ shinyUI(
         tabItem(tabName="MPs_map",
                 tags$h2('Constituency map'),
                 tags$br(),
-                tags$p('This page may take a few seconds to load - please be patient!'),
+                tags$p('Note that there are currently no MPs in the House of Commons due to the dissolution of Parliament on 3 May 2017. This page may take a few seconds to load - please be patient!'),
                 leafletOutput('MPs_map', width = "100%", height = 800)
         )
         #id = "tabs"

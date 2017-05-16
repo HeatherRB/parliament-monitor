@@ -40,6 +40,9 @@ xmlfile <- xmlTreeParse(MPs_XML)
 MPs_data <- xmlSApply(xmlRoot(xmlfile), function(x) c(xmlGetAttr(x, "Member_Id"), xmlSApply(x, xmlValue)))
 MPs_df <- data.frame(t(MPs_data),row.names=NULL)
 #sapply(MPs_df, class)
+MPs_df$HouseEndDate <- as.POSIXct(MPs_df$HouseEndDate$Member, format = "%Y-%m-%dT%H:%M:%S")
+# what happens when date is null???? update this!
+MPs_df$Current <- as.POSIXct(Sys.Date()) < MPs_df$HouseEndDate
 MPs_df$Party <- do.call("c", lapply(MPs_df$Party, "[[", 1))
 MPs_df$Party <- factor(MPs_df$Party)
 MPs_df$Gender <- do.call("c", lapply(MPs_df$Gender, "[[", 1))
@@ -173,9 +176,7 @@ shinyServer(function(input, output, session) {
     # Q: Are there gaps after merging on name?
     # not actually reactive but shared between outputs and only loaded when needed
     readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Super_Generalised_Clipped_Boundaries_in_Great_Britain") %>%
-    spTransform(CRS("+init=epsg:4326")) %>%
-    merge(select(MPs_df, mnisId, DisplayAs, MemberFrom, Party), by.x="pcon15nm", by.y="MemberFrom") %>%
-    merge(partyColours)
+    spTransform(CRS("+init=epsg:4326"))
   })
   
   # Text search ------------------------------------------------------------------
@@ -278,7 +279,7 @@ shinyServer(function(input, output, session) {
     
     if (!is.null(results_list)) {
       # incorporate data on MPs and sort by date
-      results_list <- merge(results_list, select(MPs_df, mnisId, MemberFrom, Party))
+      results_list <- merge(results_list, select(MPs_df, mnisId, MemberFrom, Party, HouseEndDate))
       results_list$dateTabled <- as.Date(results_list$dateTabled)
       results_list$type <- factor(results_list$type)
       results_list <- results_list[rev(order(results_list$dateTabled)),]
@@ -322,7 +323,12 @@ shinyServer(function(input, output, session) {
   output$PAC_map <- renderLeaflet({
     
     # Filter to show only PAC members
-    boundaries2 <- subset(boundaries(), boundaries()$mnisId %in% as.character(mnisIdsPAC))
+    PAC <- subset(MPs_df, MPs_df$mnisId %in% as.character(mnisIdsPAC)) %>%
+      select(mnisId, DisplayAs, MemberFrom, Party)
+    
+    #merge PAC members' details into boundary data
+    boundaries2 <- merge(boundaries(), PAC, by.x="pcon15nm", by.y="MemberFrom") %>%
+      merge(partyColours)
     
     # Q: How to set deafult zoom?
     # labels script https://rpubs.com/bhaskarvk/leaflet-labels
@@ -342,11 +348,11 @@ shinyServer(function(input, output, session) {
     #MPs_data()$linked_Name = paste("<a href=", constituencyURL, ">", name, "</a>")) %>%
     # Filter to show only PAC members
     subset(MPs_df, MPs_df$mnisId %in% as.character(mnisIdsPAC)) %>%
-      select(DisplayAs, Gender, Party, MemberFrom) %>%
+      select(DisplayAs, Gender, Party, MemberFrom, HouseEndDate) %>%
       datatable(escape=TRUE, rownames = FALSE, 
                 options = list(dom = 't', pageLength = 50), #show table only, not search box
-                colnames = c('Name' = 'DisplayAs', 'Constituency' = 'MemberFrom'),
-                caption = htmltools::tags$caption("The table below lists all PAC members, using data from ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), "."))
+                colnames = c('Name' = 'DisplayAs', 'Constituency' = 'MemberFrom', 'End date' = 'HouseEndDate'),
+                caption = htmltools::tags$caption("The table below lists PAC members as at April 2017, using data from ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), "."))
   )
   
   # Commons members ------------------------------------------------------------------
@@ -354,103 +360,41 @@ shinyServer(function(input, output, session) {
   output$MPs <- DT::renderDataTable(
     # data table output for MP data
     #MPs_data()$linked_Name = paste("<a href=", constituencyURL, ">", name, "</a>")) %>%
-    select(MPs_df, DisplayAs, Gender, Party, MemberFrom) %>%
+    select(MPs_df, DisplayAs, Gender, Party, MemberFrom, HouseEndDate) %>%
     datatable(escape=TRUE, filter = 'top', rownames = FALSE, 
               options = list(dom = 'tp', pageLength = 50), #show table only, not search box
-              colnames = c('Name' = 'DisplayAs', 'Constituency' = 'MemberFrom'),
-              caption = htmltools::tags$caption("The table below lists all current House of Commons MPs, as listed on ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), ". Search the list using the filters in the column headers."))
+              colnames = c('Name' = 'DisplayAs', 'Constituency' = 'MemberFrom', 'End date' = 'HouseEndDate'),
+              caption = htmltools::tags$caption("The table below lists all House of Commons MPs since May 2010, as listed on ", htmltools::a(href="http://data.parliament.uk/MembersDataPlatform/memberquery.aspx", target="_blank", "UK Parliament's Members' Names Data Platform"), ". Search the list using the filters in the column headers."))
   )
   
   output$MPs_map <- renderLeaflet({
     # Q: How to set deafult zoom?
     # labels script https://rpubs.com/bhaskarvk/leaflet-labels
-    leaflet(boundaries()) %>%
+    
+    # select only current MPs
+    current_MPs <-  filter(MPs_df, Current == TRUE)
+    
+    # set-up leaflet
+    if (nrow(current_MPs) == 0) { 
+    # no current MPs, so no MP labels
+      leaflet(boundaries()) %>%
+        addPolygons(stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
+                    label=mapply(function(x, y, z) {
+                      htmltools::HTML(sprintf("%s", htmlEscape(x)))}, 
+                      boundaries()$pcon15nm, SIMPLIFY = F))
+    } else { 
+    # add MP labels
+      merge(boundaries(), select(current_MPs, mnisId, DisplayAs, MemberFrom, Party), by.x="pcon15nm", by.y="MemberFrom") %>%
+      merge(partyColours) %>%
+      leaflet() %>%
       addPolygons(stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
                   label=mapply(function(x, y, z) {
                     htmltools::HTML(sprintf("%s <br>Member: %s, %s", htmlEscape(x), htmlEscape(y), htmlEscape(z)))}, 
                     boundaries()$pcon15nm, boundaries()$DisplayAs, boundaries()$Party, SIMPLIFY = F),
                   fillColor = ~colour) %>%
       addLegend(colors = partyColoursGB$colour, labels = partyColoursGB$Party, opacity = 0.7)
+    }
   })
   
 })
 
-# Obsolete functions ------------------------------------------------------------------
-
-#The following two functions on MPs data have been replaced by the MPs_XML data source
-# http://data.parliament.uk/MembersDataPlatform/memberquery.aspx
-
-#MPs_data <- reactive({
-  # get info on the MPs asking commons questions
-  #v <- unique(text_search_data()$mnisId)
-  #MPs.names <- v
-  #for (Id in v) {
-  #  MPs[[Id]] <- getMPInfo(Id)
-  #}
-  #t(as.data.frame(MPs))
-#})
-
-#getMPInfo <- function(mnisId){
-  # Get info on individual MPs by ID
-  #urlString <- paste("http://lda.data.parliament.uk/members/", mnisId, ".json", sep="")
-  #json_file <- getURL(urlString, ssl.verifypeer = FALSE)
-  #json_data <- fromJSON(json_file)
-  #info <- json_data$result$primaryTopic
-  #MPInfo <- vector(length = 8)
-  ##MPInfo.names <- c("name", "Id", "constituency", "constituencyURL", "gender", "website", "party", "twitter")
-  #MPInfo <- c(
-    #name = elseNA(info$fullName$'_value'[1]),
-    #Id = elseNA(mnisId),
-    #constituency = elseNA(info$constituency$label$'_value'[1]),
-    #constituencyURL = elseNA(info$constituency$'_about'[1]),
-    #gender = elseNA(info$gender$'_value'[1]),
-    #website = elseNA(info$homePage[1]),
-    #party = elseNA(info$party$'_value'[1]),
-    #twitter = elseNA(info$twitter$'_value'[1])
-  #)
-  #return(MPInfo)
-#}
-
-# Another former source of data on MPs
-
-# http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/http://data.parliament.uk/membersdataplatform/services/mnis/members/query/house=Commons%7CIsEligible=true/
-# Members
-#json_file <- getURL("http://lda.data.parliament.uk/members.json?_pageSize=100", ssl.verifypeer = FALSE)
-#json_data <- fromJSON(json_file)
-#members_list <- json_data$result$items
-
-
-#The following two functions attempted to tailor the histogram of questions over time
-
-# bars
-#bars <- reactive({
-#results_list <- data()
-#results_list$fdate <- factor(format(as.Date(results_list$dateTabled),'%Y-%m'))
-#results_list$month <- factor(format(as.Date(results_list$dateTabled),'%b %y'))
-#bars_data <- summarise(group_by(results_list, fdate, month), n=n())
-#date1 <- paste(bars_data$fdate[1],"01", sep="-")
-#date2 <- paste(bars_data$fdate[nrow(bars_data)],"01", sep="-")
-#month_list <- data.frame(date=c(seq(as.Date(date1),to=as.Date(date2),by='month')))
-#month_list$fdate <- factor(format(as.Date(month_list$date),'%Y-%m'))
-#merge(month_list, bars_data, all.x=TRUE)
-#})
-
-#output$bar_chart <- renderPlot({
-#barplot(bars()$n, names.arg = bars()$month)
-#ggplot(bars()$n, aes=(bars()$month))
-#results_list <- text_search_data()
-#results_list$fdate <- as.Date(results_list$dateTabled)
-#summarise(group_by(results_list, fdate), n=n()) %>%
-#ggplot(results_list, aes(fdate)) + geom_histogram(binwidth=7) #+ scale_x_date(date_labels = "%b %Y", limits = c(as.Date("2016-01-01"), Sys.Date()))
-#})
-
-
-#The following two outputs are obsolete output types
-
-#output$page_head <- renderUI({
-  #HTML(paste("<b>Dimensions:</b><br/><ul><li>"))
-#})
-
-#output$tabText <- renderText({ 
-  #tab()
-#})
