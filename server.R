@@ -40,9 +40,9 @@ xmlfile <- xmlTreeParse(MPs_XML)
 MPs_data <- xmlSApply(xmlRoot(xmlfile), function(x) c(xmlGetAttr(x, "Member_Id"), xmlSApply(x, xmlValue)))
 MPs_df <- data.frame(t(MPs_data),row.names=NULL)
 #sapply(MPs_df, class)
-MPs_df$HouseEndDate <- as.POSIXct(MPs_df$HouseEndDate$Member, format = "%Y-%m-%dT%H:%M:%S")
-# what happens when date is null???? update this!
-MPs_df$Current <- as.POSIXct(Sys.Date()) < MPs_df$HouseEndDate
+MPs_df$HouseEndDate <- lapply(MPs_df$HouseEndDate, function(x) if(length(x)==0) {NULL} else {as.Date.character(x)})
+MPs_df$Current <- lapply(MPs_df$HouseEndDate, function(x) if(length(x)==0) {TRUE} else {Sys.Date() < as.Date.character(x)})
+#MPs_df$HouseEndDate <- lapply(MPs_df$HouseEndDate, function(x) if(length(x)==0) {NULL} else {trunc(as.POSIXct(x, format = "%Y-%m-%dT%H:%M:%S"), "day")})
 MPs_df$Party <- do.call("c", lapply(MPs_df$Party, "[[", 1))
 MPs_df$Party <- factor(MPs_df$Party)
 MPs_df$Gender <- do.call("c", lapply(MPs_df$Gender, "[[", 1))
