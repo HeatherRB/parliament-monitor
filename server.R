@@ -67,27 +67,35 @@ test_that("MPs_df has the expected number of columns", {
 # Data on party colours of current MPs
 current_MPs <- filter(MPs_df, Current == TRUE)
 if(nrow(current_MPs)>0) {
-    Party <- levels(factor(current_MPs$Party))
-    knownParties <- c("Labour", "Labour (Co-op)", "Conservative", 
-               "Scottish National Party", "Plaid Cymru", "Green Party",
-               "Liberal Democrat", "UK Independence Party",
-               "Democratic Unionist Party", "Ulster Unionist Party", "Sinn Fein")
-    prescribedColours <- c("red", "red", "royalblue",
-                 "yellow", "forestgreen", "green",
-                 "orange", "purple",
-                 "darkred", "forestgreen", "yellow",
-                 "grey")
-    # returns the colour of a known political party, or grey otherwise
-    colour <- sapply(Party, function(x) prescribedColours[match(x, knownParties, nomatch = 12)])
-    partyColours <- data.frame(Party, colour)
-    partyColours$Party <- factor(partyColours$Party)
-    partyColours$colour <- factor(partyColours$colour)
+  Party <- levels(factor(current_MPs$Party))
+  n <- length(Party)
+  knownParties <- c("Labour", "Labour (Co-op)", "Conservative", 
+             "Scottish National Party", "Plaid Cymru", "Green Party",
+             "Liberal Democrat", "UK Independence Party",
+             "Democratic Unionist Party", "Ulster Unionist Party", "Sinn Fein")
+  prescribedColours <- c("red", "red", "royalblue",
+               "yellow", "forestgreen", "green",
+               "orange", "purple",
+               "darkred", "forestgreen", "yellow",
+               "grey")
+  # returns the colour of a known political party, or grey otherwise
+  colour <- sapply(Party, function(x) prescribedColours[match(x, knownParties, nomatch = 12)])
+  partyColours <- data.frame(Party, colour)
+  partyColours$Party <- factor(partyColours$Party)
+  partyColours$colour <- factor(partyColours$colour)
     
-    test_that("partyColours has the expected number of rows and columns", {
-      expect_equal(ncol(partyColours), 2)
-      expect_equal(nrow(partyColours), length(levels(factor(current_MPs$Party))))
-    })
+} else {
+  partyColours <- data.frame(knownParties, prescribedColours[1:11])
+  n <- 11
+  partyColours$Party <- factor(partyColours$knownParties)
+  partyColours$colour <- factor(partyColours$prescribedColours)
+  select(partyColours, -knownParties, -prescribedColours)
 }
+
+test_that("partyColours has the expected number of rows and columns", {
+  expect_equal(ncol(partyColours), 2)
+  expect_equal(nrow(partyColours), n)
+})
 
 # Cleaning and checking functions ------------------------------------------------------------------
 
@@ -115,7 +123,6 @@ getMnisId <- function(url) {
     return('NA')
   }
 }
-
 
 collapseList <- function(l) {
   # transforms a list of lists into a list containing the first element of each list
@@ -363,12 +370,15 @@ shinyServer(function(input, output, session) {
   output$PAC_map <- renderLeaflet({
     
     # Filter to show only PAC members
-    PAC <- subset(MPs_df, MPs_df$mnisId %in% as.character(mnisIdsPAC)) %>%
-      select(mnisId, DisplayAs, MemberFrom, Party)
+    #PAC <- subset(MPs_df, MPs_df$mnisId %in% as.character(mnisIdsPAC)) %>%
+    #  select(mnisId, DisplayAs, MemberFrom, Party)
     
     #merge PAC members' details into boundary data
-    boundaries2 <- merge(boundaries(), PAC, by.x="pcon15nm", by.y="MemberFrom") %>%
-      merge(partyColours)
+    #boundaries2 <- merge(boundaries(), PAC, by.x="pcon15nm", by.y="MemberFrom") %>%
+    #  merge(partyColours)
+    
+    # Filter to show only PAC members
+    boundaries2 <- subset(boundaries(), boundaries()$mnisId %in% as.character(mnisIdsPAC))
     
     # Q: How to set deafult zoom?
     # labels script https://rpubs.com/bhaskarvk/leaflet-labels
