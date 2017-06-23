@@ -10,47 +10,84 @@ library(ggplot2)
 library(leaflet) # for plotting maps https://rstudio.github.io/leaflet/
 library(rgdal) # for reading shape files (readOGR) https://www.r-bloggers.com/things-i-forget-reading-a-shapefile-in-r-with-readogr/
 library(htmltools)
+library(testthat) # R testing package
 
-# Set-up ------------------------------------------------------------------
+# Set-updata on MPs and their parties ------------------------------------------------------
 
 # Members of PAC (by ID)
 mnisIdsPAC <- c(1524, 1451, 4388, 3971, 4040, 389, 4451, 3929, 4134, 4136, 4249, 4046, 1454, 4444, 4531)
 # source: http://www.parliament.uk/business/committees/committees-a-z/commons-select/public-accounts-committee/membership/
 
-# Data on party colours
-Party <- c("Labour", "Labour (Co-op)", "Conservative", 
-           "Scottish National Party", "Plaid Cymru", "Green Party",
-           "Speaker", "Liberal Democrat", "UK Independence Party", "Independent",
-           "Democratic Unionist Party", "Ulster Unionist Party", 
-           "Social Democratic & Labour Party", "Sinn Fein")
-colour <- c("red", "red", "royalblue",
-             "yellow", "forestgreen", "green",
-             "gray", "orange", "purple", "gray",
-             "darkred", "darkblue",
-            "forestgreen", "darkgreen")
-partyColours <- data.frame(Party, colour)
-partyColoursGB <- partyColours[1:10,]
-partyColours$Party <- factor(partyColours$Party)
-partyColours$colour <- factor(partyColours$colour)
-
-# Data on commons MPs
-# http://data.parliament.uk/MembersDataPlatform/memberquery.aspx
+# Obtains an xml list of MPs data and returns a clean dataframe
 MPs_XML <- getURL("http://data.parliament.uk/membersdataplatform/services/mnis/members/query/House=Commons%7CMembership=all%7Ccommonsmemberbetween=2010-05-06and2018-03-31/", ssl.verifypeer = FALSE)
 xmlfile <- xmlTreeParse(MPs_XML)
-MPs_data <- xmlSApply(xmlRoot(xmlfile), function(x) c(xmlGetAttr(x, "Member_Id"), xmlSApply(x, xmlValue)))
-MPs_df <- data.frame(t(MPs_data),row.names=NULL)
-#sapply(MPs_df, class)
-MPs_df$HouseEndDate <- lapply(MPs_df$HouseEndDate, function(x) if(length(x)==0) {NULL} else {as.Date.character(x)})
-MPs_df$Current <- lapply(MPs_df$HouseEndDate, function(x) if(length(x)==0) {TRUE} else {Sys.Date() < as.Date.character(x)})
-#MPs_df$HouseEndDate <- lapply(MPs_df$HouseEndDate, function(x) if(length(x)==0) {NULL} else {trunc(as.POSIXct(x, format = "%Y-%m-%dT%H:%M:%S"), "day")})
-MPs_df$Party <- do.call("c", lapply(MPs_df$Party, "[[", 1))
-MPs_df$Party <- factor(MPs_df$Party)
-MPs_df$Gender <- do.call("c", lapply(MPs_df$Gender, "[[", 1))
-MPs_df$Gender <- factor(MPs_df$Gender)
+  
+# Sample output
+#<Members>
+#  <Member Member_Id="172" Dods_Id="25790" Pims_Id="3572">
+#  <DisplayAs>Ms Diane Abbott</DisplayAs>
+#  <ListAs>Abbott, Ms Diane</ListAs>
+#  <FullTitle>Rt Hon Diane Abbott MP</FullTitle>
+#  <LayingMinisterName/>
+#  <DateOfBirth>1953-09-27T00:00:00</DateOfBirth>
+#  <DateOfDeath xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+#  <Gender>F</Gender>
+#  <Party Id="15">Labour</Party>
+#  <House>Commons</House>
+#  <MemberFrom>Hackney North and Stoke Newington</MemberFrom>
+#  <HouseStartDate>1987-06-11T00:00:00</HouseStartDate>
+#  <HouseEndDate xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+#  <CurrentStatus Id="0" IsActive="True">
+#  <Name>Current Member</Name>
+#  <Reason/>
+#  <StartDate>2017-06-08T00:00:00</StartDate>
+#  </CurrentStatus>
+#  </Member>
+  
+# extract the Member_Id from the member attributes and put into a dataframe, alongside other fields
+MPs_data <- xmlSApply(xmlRoot(xmlfile), function(x) c(xmlGetAttr(x, "Member_Id"), xmlSApply(x, xmlValue))) 
+MPs_data <- t(MPs_data)
+rownames(MPs_data) <- MPs_data[,1]
+MPs_df <- as.data.frame(MPs_data)
+  
+# clean column entries
+MPs_df$HouseEndDate <- lapply(MPs_df$HouseEndDate, function(x) if(length(x)==0) {NULL} else {as.Date.character(x)}) # format HouseEndDate as a date, where applicable
+MPs_df$Current <- lapply(MPs_df$HouseEndDate, function(x) if(length(x)==0) {TRUE} else {Sys.Date() < as.Date.character(x)}) # add 'current' field = TRUE/FALSE
+MPs_df$Party <- as.factor(unlist(MPs_df$Party, use.names=FALSE)) # convert Party to factor
+MPs_df$Gender <- as.factor(unlist(MPs_df$Gender, use.names=FALSE))
 MPs_df$MemberFrom <- do.call("c", lapply(MPs_df$MemberFrom, "[[", 1))
 MPs_df$DisplayAs <- do.call("c", lapply(MPs_df$DisplayAs, "[[", 1))
 MPs_df <- mutate(MPs_df, mnisId=as.character(V1))
 MPs_df <- select(MPs_df, -V1)
+
+test_that("MPs_df has the expected number of columns", {
+  expect_equal(ncol(MPs_df), 15)
+})
+
+# Data on party colours of current MPs
+current_MPs <- filter(MPs_df, Current == TRUE)
+if(nrow(current_MPs)>0) {
+    Party <- levels(factor(current_MPs$Party))
+    knownParties <- c("Labour", "Labour (Co-op)", "Conservative", 
+               "Scottish National Party", "Plaid Cymru", "Green Party",
+               "Liberal Democrat", "UK Independence Party",
+               "Democratic Unionist Party", "Ulster Unionist Party", "Sinn Fein")
+    prescribedColours <- c("red", "red", "royalblue",
+                 "yellow", "forestgreen", "green",
+                 "orange", "purple",
+                 "darkred", "forestgreen", "yellow",
+                 "grey")
+    # returns the colour of a known political party, or grey otherwise
+    colour <- sapply(Party, function(x) prescribedColours[match(x, knownParties, nomatch = 12)])
+    partyColours <- data.frame(Party, colour)
+    partyColours$Party <- factor(partyColours$Party)
+    partyColours$colour <- factor(partyColours$colour)
+    
+    test_that("partyColours has the expected number of rows and columns", {
+      expect_equal(ncol(partyColours), 2)
+      expect_equal(nrow(partyColours), length(levels(factor(current_MPs$Party))))
+    })
+}
 
 # Cleaning and checking functions ------------------------------------------------------------------
 
@@ -79,8 +116,9 @@ getMnisId <- function(url) {
   }
 }
 
+
 collapseList <- function(l) {
-  # transforms a list of lists into a list containing the first element of a each list
+  # transforms a list of lists into a list containing the first element of each list
   if (!is.list(l)) {
     return('NA')
   } else {
@@ -176,7 +214,9 @@ shinyServer(function(input, output, session) {
     # Q: Are there gaps after merging on name?
     # not actually reactive but shared between outputs and only loaded when needed
     readOGR(dsn="shapefiles", layer="Westminster_Parliamentary_Constituencies_December_2015_Super_Generalised_Clipped_Boundaries_in_Great_Britain") %>%
-    spTransform(CRS("+init=epsg:4326"))
+    spTransform(CRS("+init=epsg:4326")) %>%
+    merge(select(current_MPs, mnisId, DisplayAs, MemberFrom, Party), by.x="pcon15nm", by.y="MemberFrom") %>%
+    merge(partyColours)
   })
   
   # Text search ------------------------------------------------------------------
@@ -340,7 +380,7 @@ shinyServer(function(input, output, session) {
                     htmltools::HTML(sprintf("%s <br>Member: %s, %s", htmlEscape(x), htmlEscape(y), htmlEscape(z)))}, 
                     boundaries2$pcon15nm, boundaries2$DisplayAs, boundaries2$Party, SIMPLIFY = F),
                   fillColor = ~colour) %>%
-      addLegend(colors = partyColoursGB$colour, labels = partyColoursGB$Party, opacity = 0.7)
+      addLegend(colors = partyColours$colour, labels = partyColours$Party, opacity = 0.7)
   })
   
   output$PAC_table <- DT::renderDataTable(
@@ -371,28 +411,23 @@ shinyServer(function(input, output, session) {
     # Q: How to set deafult zoom?
     # labels script https://rpubs.com/bhaskarvk/leaflet-labels
     
-    # select only current MPs
-    current_MPs <-  filter(MPs_df, Current == TRUE)
-    
     # set-up leaflet
     if (nrow(current_MPs) == 0) { 
     # no current MPs, so no MP labels
       leaflet(boundaries()) %>%
         addPolygons(stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
-                    label=mapply(function(x, y, z) {
+                    label=mapply(function(x) {
                       htmltools::HTML(sprintf("%s", htmlEscape(x)))}, 
                       boundaries()$pcon15nm, SIMPLIFY = F))
     } else { 
     # add MP labels
-      merge(boundaries(), select(current_MPs, mnisId, DisplayAs, MemberFrom, Party), by.x="pcon15nm", by.y="MemberFrom") %>%
-      merge(partyColours) %>%
-      leaflet() %>%
+      leaflet(boundaries()) %>%
       addPolygons(stroke=TRUE, color = "#333333", weight=0.5, opacity = 1, fillOpacity = 0.7,
                   label=mapply(function(x, y, z) {
                     htmltools::HTML(sprintf("%s <br>Member: %s, %s", htmlEscape(x), htmlEscape(y), htmlEscape(z)))}, 
                     boundaries()$pcon15nm, boundaries()$DisplayAs, boundaries()$Party, SIMPLIFY = F),
                   fillColor = ~colour) %>%
-      addLegend(colors = partyColoursGB$colour, labels = partyColoursGB$Party, opacity = 0.7)
+      addLegend(colors = partyColours$colour, labels = partyColours$Party, opacity = 0.7)
     }
   })
   
